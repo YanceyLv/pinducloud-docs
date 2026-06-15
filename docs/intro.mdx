@@ -1,0 +1,48 @@
+---
+sidebar_position: 1
+slug: /intro
+title: API 文档首页
+---
+
+# PinduCloud API 文档
+
+PinduCloud 提供 OpenAI Compatible API。你可以使用 OpenAI SDK、兼容 OpenAI 接口的客户端，或直接通过 HTTP 请求接入。
+
+## Base URL
+
+```text
+http://121.40.161.178/
+```
+
+所有示例均基于以上 Base URL。生产环境建议在服务端保存 API Key，避免将密钥暴露在浏览器、移动端或公开仓库中。
+
+## 快速示例
+
+```bash
+curl http://121.40.161.178/v1/chat/completions \
+  -H "Authorization: Bearer $PINDUCLOUD_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [
+      {
+        "role": "user",
+        "content": "用一句话介绍 PinduCloud API。"
+      }
+    ]
+  }'
+```
+
+## 接口范围
+
+- Chat Completions：兼容 OpenAI `/v1/chat/completions`
+- Images：兼容 OpenAI `/v1/images/generations`
+- Models：兼容 OpenAI `/v1/models`
+- Errors：使用 OpenAI 风格错误对象
+
+## 接入建议
+
+- 使用 `Authorization: Bearer <API_KEY>` 进行鉴权。
+- 所有请求使用 JSON 格式，除非具体接口另有说明。
+- 服务端应设置请求超时、重试和日志追踪。
+- 不要在前端页面、客户端安装包或公开日志中输出 API Key。

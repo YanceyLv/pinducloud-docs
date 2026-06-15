@@ -1,0 +1,57 @@
+---
+sidebar_position: 5
+title: 图像生成
+---
+
+# 图像生成
+
+Images API 用于根据文本提示词生成图片。接口兼容 OpenAI `/v1/images/generations`。
+
+## Endpoint
+
+```http
+POST http://121.40.161.178/v1/images/generations
+```
+
+## 请求示例
+
+```bash
+curl http://121.40.161.178/v1/images/generations \
+  -H "Authorization: Bearer $PINDUCLOUD_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-image-1",
+    "prompt": "一张干净现代的云计算 API 控制台界面，浅色背景，专业产品摄影风格",
+    "size": "1024x1024",
+    "n": 1
+  }'
+```
+
+## 常用参数
+
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| `model` | string | 图像生成模型名称 |
+| `prompt` | string | 图片描述 |
+| `size` | string | 图片尺寸，例如 `1024x1024` |
+| `n` | number | 生成图片数量 |
+
+## 响应示例
+
+```json
+{
+  "created": 1710000000,
+  "data": [
+    {
+      "url": "https://example.com/generated-image.png"
+    }
+  ]
+}
+```
+
+## 生产注意事项
+
+- 对用户输入的提示词做安全审核，避免违法、侵权或敏感内容。
+- 对图片生成请求设置频率限制和费用告警。
+- 不要长期依赖临时图片 URL，业务需要持久化时应下载后存入自有对象存储。
+- 对失败请求记录模型、尺寸、耗时和错误码，便于定位成本与稳定性问题。

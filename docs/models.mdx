@@ -1,0 +1,50 @@
+---
+sidebar_position: 6
+title: 模型列表
+---
+
+# 模型列表
+
+Models API 用于获取当前可用模型列表。接口兼容 OpenAI `/v1/models`。
+
+## Endpoint
+
+```http
+GET http://121.40.161.178/v1/models
+```
+
+## 请求示例
+
+```bash
+curl http://121.40.161.178/v1/models \
+  -H "Authorization: Bearer $PINDUCLOUD_API_KEY" \
+  -H "Content-Type: application/json"
+```
+
+## 响应示例
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "gpt-4o-mini",
+      "object": "model",
+      "created": 1710000000,
+      "owned_by": "pinducloud"
+    },
+    {
+      "id": "gpt-image-1",
+      "object": "model",
+      "created": 1710000000,
+      "owned_by": "pinducloud"
+    }
+  ]
+}
+```
+
+## 使用建议
+
+- 业务配置中应保存模型名称，避免在代码中分散硬编码。
+- 上线前确认模型能力、上下文长度、价格和可用区域。
+- 当模型不可用时，应提供降级模型或明确错误提示。

@@ -1,0 +1,70 @@
+---
+sidebar_position: 7
+title: 错误码
+---
+
+# 错误码
+
+PinduCloud API 返回 OpenAI Compatible 风格错误对象。业务系统应根据 HTTP 状态码和 `error.code` 做可观测性记录与用户提示。
+
+## 错误响应格式
+
+```json
+{
+  "error": {
+    "message": "The request is invalid.",
+    "type": "invalid_request_error",
+    "param": null,
+    "code": "invalid_request"
+  }
+}
+```
+
+## 常见错误
+
+| HTTP 状态码 | code | 说明 |
+| --- | --- | --- |
+| `400` | `invalid_request` | 请求参数不合法 |
+| `401` | `invalid_api_key` | API Key 缺失或无效 |
+| `403` | `permission_denied` | 当前 Key 无权访问该资源 |
+| `404` | `model_not_found` | 模型不存在或不可用 |
+| `429` | `rate_limit_exceeded` | 请求触发限流 |
+| `500` | `internal_error` | 服务内部错误 |
+| `503` | `service_unavailable` | 服务暂不可用 |
+
+## 错误示例
+
+```bash
+curl http://121.40.161.178/v1/chat/completions \
+  -H "Authorization: Bearer $PINDUCLOUD_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "unknown-model",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hello"
+      }
+    ]
+  }'
+```
+
+可能返回：
+
+```json
+{
+  "error": {
+    "message": "The model `unknown-model` does not exist or you do not have access to it.",
+    "type": "invalid_request_error",
+    "param": "model",
+    "code": "model_not_found"
+  }
+}
+```
+
+## 处理建议
+
+- `400` 和 `401` 通常需要修正调用方配置或请求参数。
+- `429` 应使用指数退避重试，并限制同一用户的请求频率。
+- `500` 和 `503` 可短暂重试，但必须设置最大重试次数。
+- 记录错误时应脱敏 API Key、用户隐私内容和敏感业务数据。

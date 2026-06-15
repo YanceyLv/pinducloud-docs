@@ -1,0 +1,45 @@
+---
+sidebar_position: 3
+title: API 鉴权
+---
+
+# API 鉴权
+
+PinduCloud API 使用 Bearer Token 鉴权方式，与 OpenAI API 请求头保持兼容。
+
+## 请求头
+
+```http
+Authorization: Bearer <PINDUCLOUD_API_KEY>
+Content-Type: application/json
+```
+
+## 示例请求
+
+```bash
+curl http://121.40.161.178/v1/models \
+  -H "Authorization: Bearer $PINDUCLOUD_API_KEY" \
+  -H "Content-Type: application/json"
+```
+
+## 安全要求
+
+- 不要将 API Key 写入 Markdown、前端代码、移动端代码或公开仓库。
+- 不要在错误日志中打印完整 API Key。
+- 建议按业务、环境或客户维度拆分 API Key，便于权限隔离和审计。
+- 发现密钥泄露后，应立即吊销并替换。
+
+## 常见鉴权错误
+
+```json
+{
+  "error": {
+    "message": "Invalid authentication credentials",
+    "type": "invalid_request_error",
+    "param": null,
+    "code": "invalid_api_key"
+  }
+}
+```
+
+如果请求缺少 `Authorization` 头，或 Token 无效，服务会返回鉴权相关错误。业务系统应将这类错误视为配置或权限问题，而不是自动无限重试。

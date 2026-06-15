@@ -1,0 +1,91 @@
+---
+sidebar_position: 4
+title: Chat API
+---
+
+# Chat Completions
+
+Chat Completions API 用于多轮对话、文本生成、结构化输出和工具调用前的自然语言处理。接口兼容 OpenAI `/v1/chat/completions`。
+
+## Endpoint
+
+```http
+POST http://121.40.161.178/v1/chat/completions
+```
+
+## 请求示例
+
+```bash
+curl http://121.40.161.178/v1/chat/completions \
+  -H "Authorization: Bearer $PINDUCLOUD_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一个严谨的 API 文档助手。"
+      },
+      {
+        "role": "user",
+        "content": "请用三点说明鉴权注意事项。"
+      }
+    ],
+    "temperature": 0.3,
+    "max_tokens": 500
+  }'
+```
+
+## 流式输出
+
+```bash
+curl http://121.40.161.178/v1/chat/completions \
+  -H "Authorization: Bearer $PINDUCLOUD_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [
+      {
+        "role": "user",
+        "content": "输出一个简短的上线检查清单。"
+      }
+    ],
+    "stream": true
+  }'
+```
+
+## 常用参数
+
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| `model` | string | 模型名称，例如 `gpt-4o-mini` |
+| `messages` | array | 对话消息列表 |
+| `temperature` | number | 采样温度，值越高输出越随机 |
+| `max_tokens` | number | 最大输出 token 数 |
+| `stream` | boolean | 是否启用 SSE 流式响应 |
+
+## 响应示例
+
+```json
+{
+  "id": "chatcmpl_example",
+  "object": "chat.completion",
+  "created": 1710000000,
+  "model": "gpt-4o-mini",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "1. API Key 仅保存在服务端。\n2. 请求失败时记录错误码和请求 ID。\n3. 对外服务需要限流和审计。"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 32,
+    "completion_tokens": 45,
+    "total_tokens": 77
+  }
+}
+```

@@ -1,0 +1,72 @@
+---
+sidebar_position: 2
+title: 快速开始
+---
+
+# 快速开始
+
+本页展示最小可用调用流程。PinduCloud API 使用 OpenAI Compatible 风格，主要差异是 Base URL 指向 PinduCloud API 服务。
+
+## 1. 设置 API Key
+
+```bash
+export PINDUCLOUD_API_KEY="你的_API_Key"
+```
+
+Windows PowerShell：
+
+```powershell
+$env:PINDUCLOUD_API_KEY="你的_API_Key"
+```
+
+## 2. 发送 Chat 请求
+
+```bash
+curl http://121.40.161.178/v1/chat/completions \
+  -H "Authorization: Bearer $PINDUCLOUD_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o-mini",
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是一个简洁、可靠的助手。"
+      },
+      {
+        "role": "user",
+        "content": "写一个三行的产品介绍。"
+      }
+    ],
+    "temperature": 0.7
+  }'
+```
+
+## 3. 读取响应
+
+成功响应会返回 OpenAI 风格结构：
+
+```json
+{
+  "id": "chatcmpl_example",
+  "object": "chat.completion",
+  "created": 1710000000,
+  "model": "gpt-4o-mini",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "PinduCloud 提供稳定的 OpenAI Compatible API。\n开发者可快速接入文本与图像能力。\n统一接口降低迁移和集成成本。"
+      },
+      "finish_reason": "stop"
+    }
+  ]
+}
+```
+
+## 生产接入检查
+
+- API Key 只保存在服务端环境变量或密钥管理系统中。
+- 对外服务应限制单用户请求频率，避免滥用和成本失控。
+- 记录请求 ID、模型、耗时和错误码，便于排查。
+- 业务侧应处理超时、限流和上游不可用场景。
