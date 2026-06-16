@@ -7,6 +7,8 @@ title: 图像生成
 
 Images API 用于根据文本提示词生成图片。接口兼容 OpenAI `/v1/images/generations`。
 
+当前公开模型列表未包含图像生成模型。若你的账号已开通图像模型，请将示例中的 `<image_model>` 替换为实际可用模型名称。
+
 ## Endpoint
 
 ```http
@@ -20,7 +22,7 @@ curl http://121.40.161.178/v1/images/generations \
   -H "Authorization: Bearer $PINDUCLOUD_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "gpt-image-1",
+    "model": "<image_model>",
     "prompt": "一张干净现代的云计算 API 控制台界面，浅色背景，专业产品摄影风格",
     "size": "1024x1024",
     "n": 1

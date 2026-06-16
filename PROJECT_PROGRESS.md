@@ -8,6 +8,7 @@
 
 ## 本次已完成
 
+- 根据用户提供的当前支持模型列表，更新模型文档和 API 示例模型名。
 - 初始化本地 Git 仓库并准备推送到 `https://github.com/YanceyLv/pinducloud-docs.git`。
 - 已将项目主体提交推送到 `origin/main`。
 - 最终进度记录提交已保留在本地，等待 GitHub 连接恢复后继续推送。
@@ -57,6 +58,7 @@
 - `git -c safe.directory=D:/pindu-docs commit -m "Record GitHub push progress"`
 - `git -c safe.directory=D:/pindu-docs push`
 - `git -c safe.directory=D:/pindu-docs ls-remote origin HEAD`
+- `rg` 扫描旧模型名残留
 
 ## 验证结果
 
@@ -70,16 +72,17 @@
 - 推送前验证：`npm.cmd run build` 退出码为 0。
 - Git 推送结果：项目主体提交 `61ddd02` 已成功推送到 `https://github.com/YanceyLv/pinducloud-docs.git`，并设置为跟踪 `origin/main`。
 - 后续同步结果：最终进度记录提交推送时连续遇到 `Recv failure: Connection was reset`；只读 `ls-remote` 探测同样失败，判断为当前环境到 GitHub 的连接临时不可用。
+- 模型文档调整验证：`npm.cmd run build` 退出码为 0；旧示例模型名残留扫描无匹配结果。
 
 ## 下一步任务清单
 
-- 根据真实可用模型清单校正文档中的模型示例。
+- 根据真实模型能力、上下文长度和价格继续补充模型详情。
 - 根据实际鉴权、限流和错误码实现补充更精确的错误说明。
 - 如对外正式发布，建议补充服务条款、计费说明和隐私合规说明。
 - 建议后续确认生产站点是否启用 HTTPS，并同步更新文档 Base URL。
 
 ## 风险点
 
-- 当前模型名称和错误码为 OpenAI Compatible 文档示例，需要与 PinduCloud 后端真实能力保持同步。
+- 当前错误码仍为 OpenAI Compatible 文档示例，需要与 PinduCloud 后端真实错误保持同步。
 - 当前 Base URL 使用 HTTP，公网生产环境建议评估 HTTPS 终止、证书、WAF 和访问日志方案。
 - 文档中未写入任何真实 API Key，后续维护时仍需避免密钥进入仓库。

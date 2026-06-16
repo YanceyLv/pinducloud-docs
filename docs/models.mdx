@@ -21,6 +21,17 @@ curl http://121.40.161.178/v1/models \
   -H "Content-Type: application/json"
 ```
 
+## 当前支持模型
+
+| 模型 | 建议用途 |
+| --- | --- |
+| `glm-5.1` | 通用对话、内容生成、复杂推理 |
+| `minimax-m2.7` | 通用对话、内容生成、长文本任务 |
+| `kimi-k2.5` | 通用对话、文本理解、知识问答 |
+| `kimi-k2.6` | 通用对话、文本理解、升级模型场景 |
+| `deepseek-v4-pro` | 高质量回答、复杂任务、生产主力模型 |
+| `deepseek-v4-flash` | 快速响应、低延迟任务、默认示例模型 |
+
 ## 响应示例
 
 ```json
@@ -28,13 +39,37 @@ curl http://121.40.161.178/v1/models \
   "object": "list",
   "data": [
     {
-      "id": "gpt-4o-mini",
+      "id": "glm-5.1",
       "object": "model",
       "created": 1710000000,
       "owned_by": "pinducloud"
     },
     {
-      "id": "gpt-image-1",
+      "id": "minimax-m2.7",
+      "object": "model",
+      "created": 1710000000,
+      "owned_by": "pinducloud"
+    },
+    {
+      "id": "kimi-k2.5",
+      "object": "model",
+      "created": 1710000000,
+      "owned_by": "pinducloud"
+    },
+    {
+      "id": "kimi-k2.6",
+      "object": "model",
+      "created": 1710000000,
+      "owned_by": "pinducloud"
+    },
+    {
+      "id": "deepseek-v4-pro",
+      "object": "model",
+      "created": 1710000000,
+      "owned_by": "pinducloud"
+    },
+    {
+      "id": "deepseek-v4-flash",
       "object": "model",
       "created": 1710000000,
       "owned_by": "pinducloud"
@@ -46,5 +81,7 @@ curl http://121.40.161.178/v1/models \
 ## 使用建议
 
 - 业务配置中应保存模型名称，避免在代码中分散硬编码。
+- 对延迟敏感的默认场景可优先使用 `deepseek-v4-flash`。
+- 对质量要求更高的生产场景可评估 `deepseek-v4-pro`。
 - 上线前确认模型能力、上下文长度、价格和可用区域。
 - 当模型不可用时，应提供降级模型或明确错误提示。

@@ -30,7 +30,7 @@ export default function Home() {
               <code>{`curl http://121.40.161.178/v1/chat/completions \\
   -H "Authorization: Bearer $PINDUCLOUD_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"Hello"}]}'`}</code>
+  -d '{"model":"deepseek-v4-flash","messages":[{"role":"user","content":"Hello"}]}'`}</code>
             </pre>
           </div>
         </section>

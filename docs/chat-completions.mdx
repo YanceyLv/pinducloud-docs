@@ -20,7 +20,7 @@ curl http://121.40.161.178/v1/chat/completions \
   -H "Authorization: Bearer $PINDUCLOUD_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "gpt-4o-mini",
+    "model": "deepseek-v4-flash",
     "messages": [
       {
         "role": "system",
@@ -43,7 +43,7 @@ curl http://121.40.161.178/v1/chat/completions \
   -H "Authorization: Bearer $PINDUCLOUD_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "gpt-4o-mini",
+    "model": "deepseek-v4-flash",
     "messages": [
       {
         "role": "user",
@@ -58,7 +58,7 @@ curl http://121.40.161.178/v1/chat/completions \
 
 | 参数 | 类型 | 说明 |
 | --- | --- | --- |
-| `model` | string | 模型名称，例如 `gpt-4o-mini` |
+| `model` | string | 模型名称，例如 `deepseek-v4-flash` |
 | `messages` | array | 对话消息列表 |
 | `temperature` | number | 采样温度，值越高输出越随机 |
 | `max_tokens` | number | 最大输出 token 数 |
@@ -71,7 +71,7 @@ curl http://121.40.161.178/v1/chat/completions \
   "id": "chatcmpl_example",
   "object": "chat.completion",
   "created": 1710000000,
-  "model": "gpt-4o-mini",
+  "model": "deepseek-v4-flash",
   "choices": [
     {
       "index": 0,
