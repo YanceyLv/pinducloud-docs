@@ -2,13 +2,15 @@
 
 ## 当前状态
 
-- 状态：已实现并通过本地构建验证，正在推送到 GitHub 远程仓库
+- 状态：项目主体已推送到 GitHub；最终进度记录提交因网络连接重置暂未同步到远程
 - 日期：2026-06-16
 - 当前任务：初始化并完善 Docusaurus API 文档站
 
 ## 本次已完成
 
 - 初始化本地 Git 仓库并准备推送到 `https://github.com/YanceyLv/pinducloud-docs.git`。
+- 已将项目主体提交推送到 `origin/main`。
+- 最终进度记录提交已保留在本地，等待 GitHub 连接恢复后继续推送。
 - 按用户要求移除文档和首页中的指定敏感表述。
 - 检查现有 Docusaurus classic 项目结构。
 - 创建 PinduCloud API 文档主页面：
@@ -49,6 +51,12 @@
 - `rg` 扫描指定表述残留
 - `git init -b main`
 - `git -c safe.directory=D:/pindu-docs remote add origin https://github.com/YanceyLv/pinducloud-docs.git`
+- `git -c safe.directory=D:/pindu-docs add .`
+- `git -c safe.directory=D:/pindu-docs commit -m "Initialize PinduCloud API docs"`
+- `git -c safe.directory=D:/pindu-docs push -u origin main`
+- `git -c safe.directory=D:/pindu-docs commit -m "Record GitHub push progress"`
+- `git -c safe.directory=D:/pindu-docs push`
+- `git -c safe.directory=D:/pindu-docs ls-remote origin HEAD`
 
 ## 验证结果
 
@@ -60,6 +68,8 @@
 - 最终验证：`npm.cmd run build` 退出码为 0，生成 `build` 静态文件目录。
 - 本次文案调整验证：`npm.cmd run build` 退出码为 0；指定表述残留扫描无匹配结果。
 - 推送前验证：`npm.cmd run build` 退出码为 0。
+- Git 推送结果：项目主体提交 `61ddd02` 已成功推送到 `https://github.com/YanceyLv/pinducloud-docs.git`，并设置为跟踪 `origin/main`。
+- 后续同步结果：最终进度记录提交推送时连续遇到 `Recv failure: Connection was reset`；只读 `ls-remote` 探测同样失败，判断为当前环境到 GitHub 的连接临时不可用。
 
 ## 下一步任务清单
 
