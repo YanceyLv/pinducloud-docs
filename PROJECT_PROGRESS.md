@@ -2,13 +2,14 @@
 
 ## 当前状态
 
-- 状态：项目主体已推送到 GitHub；最终进度记录提交因网络连接重置暂未同步到远程
+- 状态：模型文档更新已推送到 GitHub，等待用户确认验收
 - 日期：2026-06-16
 - 当前任务：初始化并完善 Docusaurus API 文档站
 
 ## 本次已完成
 
 - 根据用户提供的当前支持模型列表，更新模型文档和 API 示例模型名。
+- 已将模型文档更新推送到 `origin/main`。
 - 初始化本地 Git 仓库并准备推送到 `https://github.com/YanceyLv/pinducloud-docs.git`。
 - 已将项目主体提交推送到 `origin/main`。
 - 最终进度记录提交已保留在本地，等待 GitHub 连接恢复后继续推送。
@@ -59,6 +60,8 @@
 - `git -c safe.directory=D:/pindu-docs push`
 - `git -c safe.directory=D:/pindu-docs ls-remote origin HEAD`
 - `rg` 扫描旧模型名残留
+- `git -c safe.directory=D:/pindu-docs commit -m "Update supported model documentation"`
+- `git -c safe.directory=D:/pindu-docs push`
 
 ## 验证结果
 
@@ -73,6 +76,7 @@
 - Git 推送结果：项目主体提交 `61ddd02` 已成功推送到 `https://github.com/YanceyLv/pinducloud-docs.git`，并设置为跟踪 `origin/main`。
 - 后续同步结果：最终进度记录提交推送时连续遇到 `Recv failure: Connection was reset`；只读 `ls-remote` 探测同样失败，判断为当前环境到 GitHub 的连接临时不可用。
 - 模型文档调整验证：`npm.cmd run build` 退出码为 0；旧示例模型名残留扫描无匹配结果。
+- 模型文档推送结果：`main` 已推送到 `origin/main`，远程提交更新至 `7b09d34`。
 
 ## 下一步任务清单
 
