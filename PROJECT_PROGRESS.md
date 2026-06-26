@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 状态：准备提交并推送 Base URL 与模型文档更新
+- 状态：Base URL 与模型文档更新已提交并推送到远程仓库
 - 日期：2026-06-26
 - 当前任务：提交并推送当前文档更新
 
@@ -40,6 +40,8 @@
 - 已在模型列表文档中新增 `glm-5.2`。
 - 已在 `/v1/models` 响应示例中新增 `glm-5.2`。
 - 准备将 Base URL 更新和 `glm-5.2` 模型文档更新提交并推送到 `origin/main`。
+- 已创建提交 `8c749e5`，提交信息为 `Update API base URL and add glm-5.2 model`。
+- 已将 `main` 推送到 `origin/main`。
 
 ## 本次执行命令
 
@@ -89,6 +91,11 @@
 - `git -c safe.directory=E:/pinducloud-docs remote -v`
 - `git -c safe.directory=E:/pinducloud-docs diff --name-only`
 - `apply_patch` 记录提交推送任务
+- `rg -n "121\\.40\\.161\\.178|http://121\\.40\\.161\\.178" README.md docs src docusaurus.config.js PROJECT_PROGRESS.md`
+- `rg -n "glm-5\\.2" docs\models.mdx PROJECT_PROGRESS.md`
+- `git -c safe.directory=E:/pinducloud-docs add PROJECT_PROGRESS.md README.md docs/auth.mdx docs/chat-completions.mdx docs/errors.mdx docs/images.mdx docs/intro.mdx docs/models.mdx docs/quickstart.mdx docusaurus.config.js src/pages/index.js`
+- `git -c safe.directory=E:/pinducloud-docs commit -m "Update API base URL and add glm-5.2 model"`
+- `git -c safe.directory=E:/pinducloud-docs push origin main`
 
 ## 验证结果
 
@@ -114,6 +121,7 @@
 - 本次模型修改范围验证：模型新增仅修改 `docs/models.mdx` 和 `PROJECT_PROGRESS.md`；工作区同时保留上一轮 Base URL 更新文件。
 - 提交推送前验证：旧 Base URL 残留扫描无匹配；`glm-5.2` 已出现在模型列表表格和 `/v1/models` 响应示例中；修改范围为 11 个已确认文件。
 - 构建验证：本地不存在 `node_modules`，未安装依赖，未执行 `npm.cmd run build`。
+- 推送结果：`main` 已从 `855e8d1` 推送更新到 `8c749e5`。
 
 ## 下一步任务清单
 
