@@ -12,7 +12,7 @@ const config = {
     v4: true,
   },
 
-  url: 'http://121.40.161.178',
+  url: 'https://pinducloud.com.cn',
   baseUrl: '/',
 
   organizationName: 'pinducloud',

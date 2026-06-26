@@ -27,7 +27,7 @@ export default function Home() {
               </Link>
             </div>
             <pre className={styles.code}>
-              <code>{`curl http://121.40.161.178/v1/chat/completions \\
+              <code>{`curl https://pinducloud.com.cn/v1/chat/completions \\
   -H "Authorization: Bearer $PINDUCLOUD_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"model":"deepseek-v4-flash","messages":[{"role":"user","content":"Hello"}]}'`}</code>

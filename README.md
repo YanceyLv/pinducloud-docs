@@ -39,7 +39,7 @@ npm.cmd run build
 ## API Base URL
 
 ```text
-http://121.40.161.178/
+https://pinducloud.com.cn/
 ```
 
 维护文档时不要写入真实 API Key、Token 或其他敏感凭据。
