@@ -7,7 +7,8 @@ title: MiniMax-H3 视频生成
 
 MiniMax-H3 通过一个 V2 风格的多模态任务接口接收文本、图片、视频和音频，输出
 768P 或 2K 视频。配套接口还支持把 768P 任务再生成到 2K，以及只生成增强提示词
-的 H3-Context-IR 任务。
+的 H3-Context-IR 任务。调用接口时使用 PinduCloud 用户 Token，任务使用本页接口
+返回的公开任务 ID。
 
 ## 服务地址
 
@@ -50,8 +51,12 @@ Content-Type: application/json
 4. Context-IR 任务在成功时读取 task.content.prompt，再将增强提示词用于视频
    生成或再生成。
 
-任务状态由网关后台轮询上游更新；上游尚未登记任务时，查询响应可能仅包含任务 ID。
+任务状态由系统持续更新；任务尚未完成初始化时，查询响应可能仅包含任务 ID。
 视频地址是有时效的签名 URL，应在有效期内下载或转存。
+
+创建接口只返回“已受理”，不代表视频已经生成成功。只有查询到
+`task.status: "succeeded"` 后，视频任务的 `task.content.url` 或 Context-IR 任务的
+`task.content.prompt` 才可以作为结果使用。
 
 ## 计费可观测字段
 
@@ -59,15 +64,17 @@ H3 查询结果会返回与任务类型对应的 usage：
 
 | 字段 | 适用任务 | 说明 |
 | --- | --- | --- |
-| total_seconds | 视频任务 | 输入参考视频秒数与输出秒数之和 |
+| total_seconds | 视频任务 | 输入参考视频秒数与输出视频秒数之和 |
 | input_seconds | 视频任务 | 参考视频计费秒数 |
 | output_seconds | 视频任务 | 输出视频秒数 |
-| input_image_count | 视频任务 | 输入图片数量，是否免费由网关计费配置决定 |
+| input_image_count | 视频任务 | 输入图片数量，是否免费由 PinduCloud 计费设置决定 |
 | prompt_tokens | Context-IR | 输入 Token 数 |
 | completion_tokens | Context-IR | 输出 Token 数 |
 | total_tokens | Context-IR | 输入与输出 Token 总数 |
 
-usage 只返回任务实际用量，不返回单位价格。
+usage 只返回任务实际用量，不返回单位价格。视频生成和视频再生成按秒、分辨率及
+输入媒体事实计费；Context-IR 的 `prompt_tokens` 和 `completion_tokens` 分别计费，
+具体单价由本站管理员配置。
 
 ## 相关页面
 
@@ -77,3 +84,8 @@ usage 只返回任务实际用量，不返回单位价格。
 - [查询任务](./query)
 - [查询任务列表](./list)
 - [取消或删除任务](./delete)
+
+## 相关资料
+
+- [MiniMax 视频生成 V2 创建](https://platform.minimax.cn/docs/api-reference/video-generation-v2-create)
+- [MiniMax 视频生成 V2 再生成](https://platform.minimax.cn/docs/api-reference/video-generation-v2-regeneration)

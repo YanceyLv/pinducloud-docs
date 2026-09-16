@@ -6,7 +6,8 @@ title: 创建 MiniMax-H3 视频生成任务
 # 创建 MiniMax-H3 视频生成任务
 
 该接口提交一个 MiniMax-H3 异步视频任务，支持文生视频、首帧/尾帧图生视频和
-多模态参考生成。
+多模态参考生成。请求字段遵循 MiniMax-H3 V2 的任务结构；本站使用 PinduCloud Token
+和公开任务 ID。
 
 ## 请求
 
@@ -40,13 +41,18 @@ curl --request POST "$BASE_URL/hailuo/v2/video_generation" \
 | content | array | 是 | 多模态内容数组 | 必须包含一个非空 text 项 |
 | resolution | string | 是 | 768P、2K | 输出分辨率 |
 | duration | integer | 是 | 4~15 | 输出时长，单位秒 |
-| ratio | string | 否 | adaptive、21:9、16:9、4:3、1:1、3:4、9:16 | 画面比例 |
-| callback_url | string | 否 | 公网可访问地址 | 状态变化回调地址 |
+| ratio | string | 否 | `adaptive`、`21:9`、`16:9`、`4:3`、`1:1`、`3:4`、`9:16` | 画面比例 |
+| callback_url | string | 否 | HTTP/HTTPS 地址，且服务端必须能访问 | 状态变化回调地址 |
 | aigc_watermark | boolean | 否 | true / false | 是否添加 AIGC 标识水印，默认 false |
 
-纯文本请求未传 ratio 时默认为 16:9；包含图片或视频时默认为 adaptive。
-显式使用 adaptive 必须有视觉输入。图生视频的比例由输入图像决定，传入其他
-比例可能会被忽略；多模态参考场景可以明确指定比例。
+纯文本请求未传 `ratio` 时默认为 `16:9`；包含图片或视频时默认为 `adaptive`；
+仅包含音频参考时未传 `ratio` 仍默认为 `16:9`。显式使用 `adaptive` 时必须有
+图片、视频或音频媒体。图生视频的比例由输入图像决定，传入其他比例可能会被忽略；
+多模态参考场景可以明确指定比例。
+
+表中列出的是本站支持并发送给 H3 服务的参数。Seedance 专用的 `frames`、
+`service_tier`、`draft`、`draft_task` 和 `output_format` 不属于 H3 视频生成请求，
+本站不会把它们转换成 `duration` 或 `resolution`；调用时不要传入这些字段。
 
 ## content 结构
 
@@ -57,8 +63,9 @@ curl --request POST "$BASE_URL/hailuo/v2/video_generation" \
 | video_url | video_url.url | reference_video | 多模态参考视频 |
 | audio_url | audio_url.url | reference_audio | 多模态参考音频 |
 
-URL 可以使用公网 URL、mm_file://FILE_ID（上游已有文件）或小体积 Base64
+URL 可以使用公网 URL、`mm_file://FILE_ID`（已登记的文件）或小体积 Base64
 data URI。JSON 请求体上限为 64 MB；大文件使用公网 URL或已存在的文件引用。
+URL 必须能被服务端读取，本站不会把本地磁盘路径转换成公网地址。
 
 ### 输入场景组合
 
@@ -147,9 +154,9 @@ curl --request POST "$BASE_URL/hailuo/v2/video_generation" \
 
 ### 回调地址
 
-设置 callback_url 后，上游首先发送包含 challenge 的验证请求。回调服务需在规定
-时间内原样返回 challenge；验证成功后，状态变化通知的结构与查询任务的 task
-对象一致。回调服务必须能从公网访问，并能处理重复通知。
+设置 `callback_url` 后，系统首先发送包含 `challenge` 的验证请求。回调服务需在
+规定时间内原样返回 `challenge`；验证成功后，状态变化通知的结构与查询任务的
+`task` 对象一致。回调服务必须能从公网访问，并能处理重复通知和乱序通知。
 
 ## 成功响应
 

@@ -5,7 +5,7 @@ title: 查询 Seedance 视频生成任务列表
 
 # 查询 Seedance 视频生成任务列表
 
-列表接口只读取当前用户在网关提交的 Seedance 任务，不会把共享渠道账号下其他
+列表接口只读取当前用户在 PinduCloud 提交的 Seedance 任务，不会把其他
 用户的任务返回给调用方。过滤条件放在 Query 参数中，不能发送 JSON 请求体。
 
 ## 请求
@@ -44,11 +44,12 @@ curl --get "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 | filter.model | 单个字符串，最长 191 字符 | 空 | 按模型 ID过滤 |
 | filter.status | queued、running、succeeded、failed、cancelled | 空 | 按状态过滤 |
 | filter.service_tier | default、flex | default | 按服务等级过滤 |
-| filter.task_ids | 可重复，最多 100 个 | 空 | 按网关公开任务 ID过滤 |
+| filter.task_ids | 可重复，最多 100 个 | 空 | 按 PinduCloud 任务 ID过滤 |
 
 过滤条件之间按 AND 关系处理。未传 filter.model 时表示所有当前用户可见的
-Seedance 模型。列表默认使用近 7 天的任务窗口，过期的任务记录不会被上游接口
-重新查询。
+Seedance 模型。列表默认使用近 7 天的任务窗口，过期的任务记录不会被重新查询。
+`filter.service_tier` 只是对已保存任务的字段进行筛选，不代表当前
+Seedance 2.0 创建入口可以传入 `service_tier`。
 
 重复任务 ID的写法：
 
@@ -89,7 +90,7 @@ curl --get "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 ~~~
 
 items 中每项的任务字段与[单任务查询](./query)相同。处理中任务没有视频
-地址，成功任务的 URL仍然可能随上游签名过期。
+地址，成功任务的 URL仍然可能随签名有效期过期。
 
 ## 参数错误
 

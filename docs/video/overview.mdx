@@ -7,7 +7,10 @@ title: 视频生成接口
 
 PinduCloud 提供两组面向视频任务的自定义接口：豆包 Seedance 和
 MiniMax-H3。两组接口都使用异步任务模型，创建接口返回任务 ID，结果通过查询
-接口取得。
+接口取得。请求体分别按照对应接口的字段组织，并使用 PinduCloud 用户 API Token。
+
+文档中写明“本站拒绝”的参数，表示 PinduCloud 会在任务提交前返回 400；没有写入
+字段表的参数不属于本站公开接口契约，不能假定可以使用。
 
 ## 服务地址与鉴权
 
@@ -17,8 +20,7 @@ MiniMax-H3。两组接口都使用异步任务模型，创建接口返回任务 
 https://video.pinducloud.com.cn
 ~~~
 
-所有请求使用 PinduCloud 用户 API Token，而不是渠道的火山引擎或 MiniMax
-上游密钥：
+所有请求使用 PinduCloud 用户 API Token：
 
 ~~~bash
 export BASE_URL="https://video.pinducloud.com.cn"
@@ -47,28 +49,29 @@ Content-Type: application/json
 | H3 查询列表 | GET | /hailuo/v2/query/video_generation |
 | H3 取消或删除 | DELETE | /hailuo/v2/video_generation/:task_id |
 
-请求路径中的 /doubao 和 /hailuo 是 PinduCloud 网关的路由前缀。
+请求路径中的 `/doubao` 和 `/hailuo` 是 PinduCloud 的接口前缀。
 
 ## 统一任务流程
 
 1. 调用创建接口并保存响应中的 id 或 task_id。
 2. 使用同一个公开任务 ID调用对应查询接口。
-3. 轮询到 succeeded 后，从响应中的视频 URL 或 Context-IR 文本读取结果。
+3. 轮询到 `succeeded` 后，从响应中的视频 URL 或 Context-IR 文本读取结果。
 4. 在链接有效期内下载或转存视频；签名 URL不作为永久存储地址。
 
-queued 和 running 表示任务仍在处理，failed 表示上游返回失败，
-cancelled 表示任务已取消。刚提交的任务可能还没有完成上游登记，查询时短暂
-只返回任务 ID，稍后重试即可。
+`queued` 和 `running` 表示任务仍在处理，`failed` 表示任务失败，
+`cancelled` 表示任务已取消。刚提交的任务可能还没有完成任务登记，查询时短暂
+只返回任务 ID，稍后重试即可。任务已经创建后发生的失败会出现在查询结果中，
+不会通过创建接口的 2xx 响应判断最终生成成功。
 
 ## 两组接口的差异
 
 | 项目 | Seedance | MiniMax-H3 |
 | --- | --- | --- |
-| 创建响应字段 | id | task_id |
-| 查询产物 | content.video_url | 视频任务为 task.content.url |
-| 输入方式 | content 多模态数组 | content 多模态数组 |
-| 特有能力 | Draft、尾帧、多模态参考 | 768P/2K、视频再生成、Context-IR |
-| 查询任务范围 | Seedance 网关任务 | H3 生成、再生成和 Context-IR 任务 |
+| 创建响应字段 | `id` | `task_id` |
+| 查询产物 | `content.video_url` | 视频任务为 `task.content.url` |
+| 输入方式 | `content` 多模态数组 | `content` 多模态数组 |
+| 特有能力 | 以模型能力为准；2.0 支持多模态参考 | 768P/2K、视频再生成、Context-IR |
+| 查询任务范围 | PinduCloud 中创建的 Seedance 任务 | H3 生成、再生成和 Context-IR 任务 |
 
 ## 相关页面
 

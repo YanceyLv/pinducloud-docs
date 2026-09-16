@@ -7,7 +7,8 @@ title: 创建 H3-Context-IR 任务
 
 H3-Context-IR 会理解文本与多模态上下文，生成更完整的结构化视频提示词。它本身
 不会生成视频，也不会返回视频 URL；输出的增强提示词可直接用于 H3 视频生成，
-也可作为视频再生成所需的最终 prompt。
+也可作为视频再生成所需的最终 `prompt`。这是异步任务接口，创建成功只表示任务
+已受理。
 
 ## 请求
 
@@ -44,8 +45,9 @@ curl --request POST "$BASE_URL/hailuo/v2/h3_context_ir" \
 | ratio | string | 否 | H3 生成接口的比例枚举 | 目标画面比例 |
 | callback_url | string | 否 | 公网可访问地址 | 可选状态回调 |
 
-本接口没有 resolution 参数。图片、视频、音频格式、数量和组合限制沿用[H3
-视频生成接口](./create)。
+本接口没有 `resolution` 参数。`duration` 表示生成提示词所对应的目标视频时长，
+取值仍为 4~15 秒；`ratio` 的默认值和媒体组合规则沿用[H3 视频生成接口](./create)。
+本接口的结果是文本，不会产生视频秒数或输入图片费用。
 
 ## 任务结果
 
@@ -94,5 +96,6 @@ content 文本项传入：
 }
 ~~~
 
-Context-IR 任务按实际 prompt_tokens 与 completion_tokens 分开结算。提交阶段
-不预扣视频费用；失败任务不产生最终 Token 费用。
+Context-IR 任务按实际 `prompt_tokens` 与 `completion_tokens` 分开结算，两个字段
+使用管理员分别配置的 Token 单价。提交阶段不会按视频秒数、输入图片或输入视频
+预扣；任务失败时不产生最终 Token 费用。

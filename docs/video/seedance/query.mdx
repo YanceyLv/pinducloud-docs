@@ -5,8 +5,8 @@ title: 查询 Seedance 视频生成任务
 
 # 查询 Seedance 视频生成任务
 
-使用创建接口返回的公开任务 ID读取最新任务快照。网关会把上游状态和结果保存到
-当前用户的任务记录中，并阻止跨用户读取。
+使用创建接口返回的公开任务 ID读取最新任务快照。PinduCloud 会保存任务状态和结果，
+并阻止跨用户读取。
 
 ## 请求
 
@@ -20,14 +20,14 @@ curl --request GET \
   --header "Authorization: Bearer $API_KEY"
 ~~~
 
-路径参数 task_id 必须是本次调用方创建的 Seedance 公开任务 ID；渠道内部的上游
-任务 ID不适用于此接口。
+路径参数 `task_id` 必须是本次调用方创建的 Seedance 公开任务 ID；服务内部任务
+标识不适用于此接口。
 
 ## 状态值
 
 | 状态 | 含义 |
 | --- | --- |
-| queued | 已提交，等待上游调度 |
+| queued | 已提交，等待处理 |
 | running | 正在生成 |
 | succeeded | 生成成功，content.video_url 可用 |
 | failed | 生成失败，查看 error |
@@ -36,11 +36,11 @@ curl --request GET \
 
 ## 响应字段
 
-查询结果是官方任务字段的网关快照，常用字段如下：
+查询结果是任务快照，常用字段如下：
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| id | string | 网关公开任务 ID |
+| id | string | PinduCloud 公开任务 ID |
 | model | string | 实际使用的模型 |
 | status | string | 当前任务状态 |
 | content.video_url | string | 成功后的 MP4 下载地址 |
@@ -62,6 +62,10 @@ curl --request GET \
 
 usage.completion_tokens 是生成用量，usage.total_tokens 是总用量。Seedance 当前
 没有独立的输入 Token 概念。
+
+查询结果是任务快照，可能保留任务处理过程中记录的历史字段。查询响应中出现
+`service_tier`、`draft` 或其他字段，不表示当前三个 Seedance 2.0 模型的创建入口
+接受同名请求字段；创建请求应以[创建任务](./create)中的字段和模型限制为准。
 
 ## 响应示例
 
@@ -110,7 +114,7 @@ usage.completion_tokens 是生成用量，usage.total_tokens 是总用量。Seed
 }
 ~~~
 
-这是上游任务尚未完成初始化登记的短暂状态，不代表任务创建失败。
+这是任务尚未完成初始化登记的短暂状态，不代表任务创建失败。
 
 ### 失败
 

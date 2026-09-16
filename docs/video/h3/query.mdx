@@ -6,7 +6,7 @@ title: 查询 MiniMax-H3 任务
 # 查询 MiniMax-H3 任务
 
 这个查询接口同时适用于普通生成、视频再生成和 H3-Context-IR。使用创建接口返回
-的网关公开 task_id，不要传渠道内部 ID。
+的 PinduCloud 任务 ID。
 
 ## 请求
 
@@ -20,7 +20,7 @@ curl --request GET \
   --header "Authorization: Bearer $API_KEY"
 ~~~
 
-任务刚提交时可能只有 task.id，等上游完成初始化后再次查询即可。
+任务刚提交时可能只有 `task.id`，等任务完成初始化后再次查询即可。
 
 ## 任务状态
 
@@ -64,7 +64,7 @@ curl --request GET \
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| id | string | 网关公开任务 ID |
+| id | string | PinduCloud 公开任务 ID |
 | model | string | MiniMax-H3 |
 | status | string | 当前状态 |
 | created_at / updated_at | integer | Unix 秒时间戳 |
@@ -131,5 +131,5 @@ Context-IR 任务的 usage：
 }
 ~~~
 
-拿到终态后停止轮询。视频 URL可能过期，过期后可再次查询以获取上游提供的新签名
-地址，但任务本身也受服务端保留窗口限制。
+拿到终态后停止轮询。视频 URL可能过期，过期后可再次查询以获取新的签名地址，
+但任务本身也受服务端保留窗口限制。

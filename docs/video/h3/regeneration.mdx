@@ -6,7 +6,8 @@ title: 创建 MiniMax-H3 视频再生成任务
 # 创建 MiniMax-H3 视频再生成任务
 
 再生成接口把符合 MiniMax-H3 768P 输出规格的源视频生成成 2K 视频。它不是任意
-视频转码接口，输出分辨率固定为 2K，输出时长继承源视频。
+视频转码接口，输出分辨率固定为 2K，输出时长继承源视频。本站会先校验源任务
+归属和源任务状态，再处理源任务关联。
 
 ## 请求
 
@@ -19,8 +20,8 @@ POST https://video.pinducloud.com.cn/hailuo/v2/video_regeneration
 - source_task_id：引用当前用户自己创建的 H3 768P 成功任务。
 - content：直接提交一个 role=base_video 的源视频，并带上生成源视频时的输入。
 
-两个字段同时出现，或两个字段都不出现，都会返回参数错误。请求体不要传
-duration，再生成会继承源视频时长。
+两个字段同时出现，或两个字段都不出现，都会返回参数错误。`duration` 不控制
+再生成时长，输出时长继承源视频；`resolution` 必须为 `2K`。
 
 ## 模式一：源任务 ID
 
@@ -41,11 +42,11 @@ curl --request POST "$BASE_URL/hailuo/v2/video_regeneration" \
 - model 必须为 MiniMax-H3。
 - source_task_id 必须属于当前用户，源任务必须成功、是普通 H3 生成任务，且
   分辨率为 768P。
-- 源任务需要处于服务端可查询窗口内；部分上游能力还需要白名单授权。
+- 源任务需要处于服务端可查询窗口内；部分功能可能需要额外授权。
 - resolution 必须写 2K。
 - 不能同时提交 content、prompt、images、image 或 input_reference。
 
-网关会用公开任务 ID查找并验证源任务，再把内部上游任务 ID发送给 MiniMax。
+服务端会用公开任务 ID查找并验证源任务，再处理再生成请求。
 
 ## 模式二：直接传入源视频
 
@@ -72,9 +73,9 @@ curl --request POST "$BASE_URL/hailuo/v2/video_regeneration" \
   }'
 ~~~
 
-content 必须包含恰好一个 base_video，且该项的 type 必须是 video_url。还必须有
-一个非空 text 项。其他参考媒体可以按生成接口的规则继续提供，但帧图角色与
-reference_* 角色不能混用。
+content 必须包含恰好一个 `base_video`，且该项的 `type` 必须是 `video_url`。
+还必须有一个非空 `text` 项。其他参考媒体可以按生成接口的规则继续提供，但帧图
+角色与 `reference_*` 角色不能混用。
 
 为保持再生成结果与源视频一致，文本应使用生成 768P 源视频时实际送入模型的
 最终 prompt；如果之前调用过 Context-IR，应使用增强后的 task.content.prompt。
@@ -93,16 +94,17 @@ reference_* 角色不能混用。
 | 总帧数 | 107~362 帧，每档递增 17 帧 |
 | 时长 | 约 4~15 秒，具体由帧数决定 |
 
-源视频的 URL必须能被上游访问。PinduCloud 不会把本地文件路径转换成公网地址，
-也不能用 multipart 上传代替 base_video。
+源视频的 URL必须能被服务端访问。PinduCloud 不会把本地文件路径转换成公网地址，
+也不能用 multipart 上传代替 `base_video`。服务端校验内容结构，源视频的编码、尺寸、
+帧率、音轨和帧数会在任务提交后继续检查。
 
 ## 顶层参数
 
 | 字段 | 类型 | 必填 | 取值或范围 | 说明 |
 | --- | --- | --- | --- | --- |
 | model | string | 是 | MiniMax-H3 | 固定模型 |
-| source_task_id | string | 二选一 | 当前用户的 H3 768P任务 | 源任务模式 |
-| content | array | 二选一 | 含一个 base_video | 直接内容模式 |
+| source_task_id | string | 二选一 | 当前用户的 H3 768P 任务 | 源任务模式 |
+| content | array | 二选一 | 含一个 `base_video` | 直接内容模式 |
 | resolution | string | 是 | 2K | 再生成固定输出 2K |
 | callback_url | string | 否 | 公网可访问地址 | 状态变化回调 |
 | aigc_watermark | boolean | 否 | true / false | 是否添加 AIGC 水印 |

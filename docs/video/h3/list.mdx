@@ -32,7 +32,7 @@ curl --get "$BASE_URL/hailuo/v2/query/video_generation" \
 | filter.model | 只能为 MiniMax-H3 | 空 | 按模型过滤 |
 | filter.status | queued、running、succeeded、failed、cancelled | 空 | 按状态过滤 |
 | filter.task_type | generation、regeneration、h3_context_ir | 空 | 按任务类型过滤 |
-| filter.task_ids | 可重复，最多 100 个 | 空 | 按网关任务 ID过滤 |
+| filter.task_ids | 可重复，最多 100 个 | 空 | 按 PinduCloud 任务 ID过滤 |
 
 列表查询结果按当前用户隔离。重复传入任务 ID：
 

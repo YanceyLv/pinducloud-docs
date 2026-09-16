@@ -21,8 +21,8 @@ Seedance 素材组。素材库中的文件保存在配置的阿里云 OSS Bucket
 2. 创建一个素材组并选中它。
 3. 将媒体文件拖入素材列表区域，或点击上传按钮选择多个文件。上传队列会逐个
    处理文件，并显示排队、上传中、已上传和失败状态。
-4. 等待素材状态变为 **Active**。`Processing` 表示上游还在审核，`Failed` 表示
-   上游审核失败；这两种状态都不应作为生成任务的输入。
+4. 等待素材状态变为 **Active**。`Processing` 表示素材仍在审核，`Failed` 表示
+   审核失败；这两种状态都不应作为生成任务的输入。
 5. 在素材卡片或列表中确认预览可用，再按下面的方式取得媒体 URL并提交任务。
 
 支持的上传大小上限为：
@@ -89,10 +89,10 @@ curl --request POST "$BASE_URL/api/user/seedance/assets/upload" \
 
 文件会按以下顺序处理：
 
-1. 网关校验类型、大小和基础文件条件。
-2. 文件写入私有 OSS，并生成供上游读取的临时地址。
-3. 网关调用 Seedance `CreateAsset`，把素材加入指定素材组。
-4. 网关保存本地素材记录并异步同步审核状态。
+1. 系统校验类型、大小和基础文件条件。
+2. 文件写入私有 OSS，并生成任务所需的临时地址。
+3. 系统将素材加入指定素材组。
+4. 系统保存素材记录并异步同步审核状态。
 
 上传请求返回 `202` 只表示素材已进入处理流程，不表示素材已经可以用于生成。
 
@@ -136,7 +136,7 @@ curl --get "$BASE_URL/api/user/seedance/assets" \
 
 ### 重命名和删除
 
-素材组和素材删除会同时处理上游记录、本地记录和 OSS 对象。删除素材组或素材前，
+素材组和素材删除会同时处理素材记录和 OSS 对象。删除素材组或素材前，
 请先确认没有正在使用该素材的外部任务。
 
 | 能力 | 方法 | 路径 |
@@ -202,30 +202,15 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 首帧/首尾帧和多模态参考输入的组合规则、模型限制和媒体格式要求，见[创建
 Seedance 视频生成任务](./create)。
 
-提交任务前应重新查询一次素材列表，确保 URL 尚未过期且素材仍为 `Active`。网关
-会将这个 URL 按 Seedance 请求原样发送给上游；如果任务排队时间可能超过签名地址
+提交任务前应重新查询一次素材列表，确保 URL 尚未过期且素材仍为 `Active`。系统
+会将这个 URL 作为 Seedance 请求的媒体地址；如果任务排队时间可能超过签名地址
 的剩余有效期，应在任务开始前重新取得 URL。
-
-## 使用前准备
-
-完成以下配置后，才能创建素材组和上传文件：
-
-1. 在 **系统设置 → 运维 → 私域素材 OSS** 中填写 OSS Region、Endpoint、Bucket、
-   Object Prefix、AccessKey ID 和 AccessKey Secret。
-2. OSS 使用私有 Bucket，并允许服务端账号执行 `PutObject`、`GetObject` 和
-   `DeleteObject`。
-3. 至少有一个启用的 Seedance 渠道。素材组创建时会绑定当时选中的渠道账号，
-   后续素材同步和删除仍使用该账号。
-
-Endpoint 必须是 HTTPS 源站地址，不要把 AccessKey 写入浏览器代码、生成请求或
-文档示例。Region、Endpoint 和 Bucket 在仍有 OSS 素材时不能更改；需要更换存储
-位置时，应先删除相关素材。
 
 ## 常见问题
 
 ### 上传成功但不能生成
 
-检查素材是否仍为 `Processing`、`Failed` 或 `Deleting`。只有上游审核完成并返回
+检查素材是否仍为 `Processing`、`Failed` 或 `Deleting`。只有审核完成并返回
 `Active` 状态后，素材才适合作为输入。还要确认生成请求使用的是最新的
 `preview_url`，而不是 `asset_id` 或已经过期的旧 URL。
 
@@ -236,6 +221,4 @@ Endpoint 必须是 HTTPS 源站地址，不要把 AccessKey 写入浏览器代�
 
 ### 素材组创建失败
 
-确认存在启用的 Seedance 渠道，并检查渠道账号是否有对应的素材 Action 权限。
-如果 OSS 配置缺失或 Bucket、Region、Endpoint 不匹配，创建本地上传素材时也会
-失败。
+如果仍然失败，请联系管理员检查素材库服务配置。

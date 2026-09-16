@@ -6,7 +6,9 @@ title: 豆包 Seedance 视频生成
 # 豆包 Seedance 视频生成
 
 这组接口通过 Seedance 模型提交文生视频、图生视频和多模态参考视频任务。
-请求体使用 Ark/Seedance 的 content 结构，任务结果通过异步查询接口取得。
+请求体使用 Ark/Seedance 的 `content` 结构，任务结果通过异步查询接口取得。
+本页重点说明本站对 Seedance 2.0 标准版、Fast 和 Mini 的当前接口规则；其他已声明
+模型有各自的参数限制，不能套用 2.0 的全部规则。
 
 ## 服务地址
 
@@ -27,12 +29,12 @@ https://video.pinducloud.com.cn
 
 | 场景 | content 组成 | 适用模型 |
 | --- | --- | --- |
-| 文生视频 | 文本项 | 所有已声明模型 |
-| 首帧图生视频 | 文本项 + 一张首帧图 | 全系列 |
-| 首尾帧图生视频 | 文本项 + first_frame 和 last_frame | 2.0、1.5 pro、1.0 pro |
-| 多模态参考生成 | 文本项 + 参考图/视频/音频 | 2.0 系列 |
-| 有声视频 | generate_audio: true | 2.0 系列、1.5 pro |
-| Draft 样片 | draft: true | 1.5 pro |
+| 文生视频 | 文本项 | 已开放的对应模型 |
+| 首帧图生视频 | 文本项 + 一张首帧图 | 由对应模型的输入能力决定 |
+| 首尾帧图生视频 | 文本项 + `first_frame` 和 `last_frame` | 当前 2.0 标准版已验证 |
+| 多模态参考生成 | 文本项 + 参考图/视频/音频 | 当前 2.0 三个模型的 `content` 入口 |
+| 有声视频 | `generate_audio: true` | 当前 2.0 三个模型 |
+| Draft 样片 | `draft: true` | 当前文档保留 1.5 pro 流程；2.0 入口拒绝 |
 
 首帧/首尾帧和多模态参考是互斥的输入场景。不要在同一个请求中同时混用
 first_frame、last_frame 与 reference_* 角色。
@@ -52,18 +54,46 @@ doubao-seedance-2-0-mini-260615
 doubao-seedance-2-5-260628
 ~~~
 
-Seedance 的分辨率硬性限制如下：
+Seedance 2.0 三个模型的本站分辨率限制如下：
 
 | 模型 | 可用分辨率 |
 | --- | --- |
 | doubao-seedance-2-0-fast-260128 | 480p、720p |
 | doubao-seedance-2-0-mini-260615 | 480p、720p |
 | doubao-seedance-2-0-260128 | 480p、720p、1080p、4k |
-| 其他已开放 Seedance 模型 | 由上游接口校验模型实际能力 |
+| 其他已开放 Seedance 模型 | 本页不定义其限制，由对应接口校验 |
 
-Fast 和 Mini 模型不能传 1080p、4k 或等价的高分辨率尺寸。未传 resolution 时，
-Fast/Mini 按 720p 进行预估，其余模型按 1080p 进行预估；实际结果以查询响应的
-resolution 字段为准。
+Fast 和 Mini 模型不能传 `1080p`、`4k` 或等价的高分辨率尺寸。未传 `resolution`
+时，Fast/Mini 按 `720p` 进行预估，标准版按 `1080p` 进行预估；实际结果以查询
+响应的 `resolution` 字段为准。
+
+## 三个 2.0 模型的字段边界
+
+下表说明本站 `/doubao/api/v3/contents/generations/tasks` 入口的行为，并单独标出
+已知的模型限制。“本站当前拒绝”表示本站会在提交前返回 400；没有标注为模型限制
+的项目，不应推断其他 Seedance 版本也有相同限制。
+
+| 字段或能力 | 标准版 `doubao-seedance-2-0-260128` | Fast / Mini | 本站行为 |
+| --- | --- | --- | --- |
+| `resolution` | `480p`、`720p`、`1080p`、`4k` | `480p`、`720p` | Fast/Mini 的高分辨率请求返回 400 |
+| `duration` | `-1` 或 4~15 的整数 | `-1` 或 4~15 的整数 | 其他值返回 400 |
+| `content` 参考媒体 | 参考图、参考视频、参考音频 | 同左 | 媒体角色和数量必须符合请求规则 |
+| `frames` | 本站当前拒绝 | 本站当前拒绝 | 不代表其他 Seedance 版本都不支持 |
+| `service_tier` | 本站当前拒绝 | 本站当前拒绝 | 列表过滤参数仍可使用 `default`/`flex` |
+| `draft`、`draft_task` | 本站当前拒绝 | 本站当前拒绝 | 2.0 不使用 Draft 流程 |
+| `camera_fixed` | 本站拒绝；标准版不支持 | 本站拒绝 | 返回 400 |
+| `output_format` | 本站只接受 `mp4`；标准版不支持 `mov` | 本站只接受 `mp4` | 返回 400 |
+| `generate_audio` | 支持 | 支持 | 显式 `false` 也会保留 |
+| `return_last_frame` | 支持 | 支持 | 结果可能包含 `last_frame_url` |
+| `seed`、`priority` | 按字段范围传递 | 按字段范围传递 | 查询结果以实际返回值为准 |
+| `tools` | 可传 `web_search` 工具 | 可传 | 是否实际执行以任务结果为准 |
+
+`frames`、`service_tier`、`draft` 和 `draft_task` 是本站当前 2.0 入口的限制，
+不要根据查询结果中出现的同名字段反推创建接口可以接受它们。`service_tier` 出现
+在列表过滤中，只表示可以筛选已保存任务的字段。
+
+`seed` 是请求值和实际使用值的两个概念。本站会保留并发送调用方提供的值，查询
+结果中的 `seed` 是任务返回值；如果模型自行调整，本站不会改写回显结果。
 
 ## 结果与保留时间
 
@@ -78,3 +108,7 @@ Seedance 支持使用 PinduCloud 私域素材库中的图片、视频和音频�
 的 URL字段，再提交生成任务。`asset_id` 只用于素材管理，不能直接作为媒体输入。
 
 完整流程、OSS 配置、上传接口和示例见[使用 Seedance 私域素材库](./private-assets)。
+
+## 相关资料
+
+- [火山引擎 Seedance 视频生成](https://www.volcengine.com/docs/82379/1520757?lang=zh)

@@ -26,11 +26,11 @@ curl --request DELETE \
 | --- | --- | --- |
 | queued | cancelled | 任务停止排队，尚未开始的预扣按结算规则退还 |
 | running | 不可取消 | 查询任务直至进入终态 |
-| succeeded | deleted | 删除上游任务记录，已结算费用不因删除自动退还 |
+| succeeded | deleted | 删除任务记录，已结算费用不因删除自动退还 |
 | failed | deleted | 删除失败任务记录，失败任务不产生最终费用 |
-| cancelled | 不可恢复 | 保留网关任务和计费历史 |
+| cancelled | 不可恢复 | 保留 PinduCloud 任务和计费历史 |
 
-删除前网关会尝试刷新本地任务状态并确认上游结果。如果上游操作无法确认，接口
+删除前，PinduCloud 会尝试刷新任务状态并确认结果。如果操作无法确认，接口
 返回错误，不会把未知状态直接转换成成功或退款。
 
 ## 响应示例
@@ -63,9 +63,9 @@ curl --request DELETE \
 | 401 | unauthorized | Token 无效或缺失 |
 | 404 | task_not_found | 任务不存在或不属于当前用户 |
 | 409 | 状态冲突 | 当前任务不允许重复取消或删除 |
-| 502 | task_sync_failed | 删除前无法同步上游状态 |
+| 502 | task_sync_failed | 删除前无法同步任务状态 |
 | 503 | task_cancel_pending | 取消已提交但还未确认 |
 | 503 | task_settlement_unavailable | 最终用量尚未可用，等待对账 |
 
-删除只影响上游任务记录，不会把已经返回的临时视频 URL变成永久地址。需要保留
+删除只影响任务记录，不会把已经返回的临时视频 URL变成永久地址。需要保留
 视频时，先下载或转存文件。

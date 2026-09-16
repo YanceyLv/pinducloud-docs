@@ -27,7 +27,8 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
     "ratio": "16:9",
     "duration": 5,
     "generate_audio": false,
-    "watermark": false
+    "watermark": false,
+    "output_format": "mp4"
   }'
 ~~~
 
@@ -35,39 +36,41 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 
 | 字段 | 类型 | 必填 | 取值或范围 | 说明 |
 | --- | --- | --- | --- | --- |
-| model | string | 是 | 已开放的 Seedance 模型 ID | 参与渠道和计费选择 |
+| model | string | 是 | 已开放的 Seedance 模型 ID | 选择模型和对应计费规则 |
 | content | array | 是 | 文本、图片、视频、音频或 Draft 项 | 描述生成内容及参考素材 |
-| resolution | string | 否 | 480p、720p、1080p、4k | 输出分辨率；模型能力会进一步限制 |
+| resolution | string | 否 | 标准版为 `480p`、`720p`、`1080p`、`4k`；Fast/Mini 为 `480p`、`720p` | 输出分辨率；未传时标准版按 `1080p` 预估，Fast/Mini 按 `720p` 预估 |
 | ratio | string | 否 | 16:9、4:3、1:1、3:4、9:16、21:9、adaptive | 输出画面比例 |
-| duration | integer | 否 | -1 或整数秒 | -1 由模型在支持范围内选择时长 |
-| frames | integer | 否 | 29~289，且满足 25 + 4n | 与 duration 二选一；2.0/1.5 暂不支持 |
-| callback_url | string | 否 | 公网 HTTPS 地址 | 状态变化时接收回调，回调体按查询结果返回 |
+| duration | integer | 否 | 三个 2.0 模型为 `-1` 或 4~15 的整数秒 | `-1` 由模型在支持范围内选择时长；其他模型以对应接口为准 |
+| frames | integer | 否 | 三个 2.0 模型的本站入口不接受 | 这是本站入口限制，不代表其他 Seedance 版本都不支持 |
+| callback_url | string | 否 | HTTP/HTTPS 地址，且服务端必须能访问 | 状态变化时接收回调；系统会先验证地址 |
 | return_last_frame | boolean | 否 | true / false | 成功时是否返回尾帧地址，默认 false |
-| service_tier | string | 否 | default / flex | 在线或离线推理等级 |
+| service_tier | string | 否 | 三个 2.0 模型的本站入口不接受 | `default`/`flex` 仅用于列表过滤，其他模型以对应接口为准 |
 | execution_expires_after | integer | 否 | 3600~259200 | 从创建时间起的过期秒数，默认 172800 |
-| generate_audio | boolean | 否 | true / false | 2.0 和 1.5 pro 支持有声视频 |
-| draft | boolean | 否 | true / false | 仅 1.5 pro 支持 Draft 样片 |
-| tools | array | 否 | 当前支持 web_search | 仅 2.0 系列支持联网搜索 |
-| safety_identifier | string | 否 | 最长 64 字符 | 终端用户稳定标识 |
-| priority | integer | 否 | 0~9 | 仅 2.0 系列；数值越大越优先排队 |
+| generate_audio | boolean | 否 | true / false | 当前三个 2.0 模型支持；显式 `false` 会保留 |
+| draft | boolean | 否 | 三个 2.0 模型的本站入口不接受 `true` | Draft 流程只适用于相应的其他模型 |
+| tools | array | 否 | 当前入口接受 `[{"type":"web_search"}]` | 是否实际执行以任务结果为准 |
+| safety_identifier | string | 否 | ASCII 字符串，最长 64 字符 | 终端用户稳定标识 |
+| priority | integer | 否 | 0~9 | 系统校验范围并传递；实际调度效果以任务结果为准 |
 | seed | integer | 否 | -1~2^32-1 | 控制随机性，默认 -1 |
-| camera_fixed | boolean | 否 | true / false | 是否固定摄像头；2.0 暂不支持 |
+| camera_fixed | boolean | 否 | 三个 2.0 模型的本站入口不接受 | 标准版不支持，本站对三个模型提前返回 400 |
+| output_format | string | 否 | 三个 2.0 模型只接受 `mp4` | 标准版不支持 `mov`，本站提前返回 400 |
+| omni_reference_task_type | string | 否 | 仅在对应模型明确支持时使用 | 当前入口可传递；不能据此推断 2.0 已启用该能力 |
 | watermark | boolean | 否 | true / false | 是否添加右下角 AIGC 水印 |
 
 ### 时长与帧数
 
-duration 用于指定整数秒。frames 用于需要小数秒的旧模型场景；它与
-duration 不能同时依赖，且 frames 的优先级高于 duration。各模型的官方有效
-范围仍需遵循渠道实际能力：
+对当前三个 Seedance 2.0 模型，使用 `duration` 指定整数秒；`duration: -1`
+表示智能时长。本站入口不接受这三个模型的 `frames` 字段，因此不能用 `frames`
+绕过 4~15 秒限制。其他模型的帧数能力不在本页的 2.0 规则内，应按其对应接口
+调用说明：
 
 | 模型系列 | duration |
 | --- | --- |
-| Seedance 2.0 / 2.0 fast | 4~15 秒，或 -1 |
-| Seedance 1.5 pro | 4~12 秒，或 -1 |
-| Seedance 1.0 pro / pro fast | 2~12 秒 |
+| Seedance 2.0 标准版/Fast/Mini | 4~15 秒，或 `-1` |
+| 其他 Seedance 模型 | 以对应接口和模型能力为准 |
 
-网关会拒绝非整数和明显越界的时长；即使通过网关边界检查，上游仍可能因模型不
-支持某个时长而返回 400。
+系统会拒绝非整数和明显越界的时长；即使通过本站检查，模型服务仍可能因不支持某个
+时长而返回 400。
 
 ### content 项
 
@@ -77,14 +80,14 @@ duration 不能同时依赖，且 frames 的优先级高于 duration。各模型
 | type | 主要字段 | role | 用途 |
 | --- | --- | --- | --- |
 | text | text | 无 | 视频提示词 |
-| image_url | image_url.url | first_frame、last_frame 或 reference_image | 首帧、尾帧或参考图 |
-| video_url | video_url.url | reference_video | 参考视频，2.0 系列支持 |
-| audio_url | audio_url.url | reference_audio | 参考音频，2.0 系列支持 |
+| image_url | image_url.url | `first_frame`、`last_frame` 或 `reference_image` | 单张图片可省略 role，默认作为首帧；多张图片必须写 role |
+| video_url | video_url.url | `reference_video` | 参考视频，2.0 系列支持 |
+| audio_url | audio_url.url | `reference_audio` | 参考音频，2.0 系列支持 |
 | draft_task | draft_task.id | 无 | 使用已有 Draft 任务生成正式视频 |
 
-媒体 URL 可以是公网地址、符合上游要求的 Base64 data URI，或上游支持的素材
-引用。PinduCloud 自定义路由不接受本地文件路径和 multipart 上传，URL 必须能被
-上游网络环境读取。
+媒体 URL 可以是公网地址、符合接口要求的 Base64 data URI，或已登记的素材引用。
+PinduCloud 自定义路由不接受本地文件路径和 multipart 上传，URL 必须能被服务端
+读取。
 
 ## 输入约束
 
@@ -162,7 +165,8 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 ### 多模态参考
 
 2.0 系列可以把图片、视频和音频作为参考输入。提示词中用“图片 1”“视频 1”
-等序号指代对应素材，顺序按各类素材在 content 中的出现顺序计算。
+等序号指代对应素材，顺序按各类素材在 `content` 中的出现顺序计算。参考媒体
+必须使用 `reference_image`、`reference_video` 或 `reference_audio` 角色。
 
 ~~~json
 {
@@ -181,7 +185,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 
 ### Draft 转正式视频
 
-1. 先使用 draft: true 创建 1.5 pro 样片任务。
+1. 先使用 `draft: true` 创建支持 Draft 的模型样片任务；当前三个 2.0 模型不接受该字段。
 2. 查询样片并确认结果。
 3. 将样片任务 ID放入新的 draft_task.id，创建正式任务。
 
@@ -197,7 +201,8 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 }
 ~~~
 
-提交时使用公开任务 ID，网关校验任务归属后映射为上游 Draft ID。
+提交时使用公开任务 ID，系统会校验任务归属并处理 Draft 关联。该流程不能用于
+当前三个 Seedance 2.0 模型。
 
 ## 成功响应
 
@@ -211,5 +216,7 @@ id 用于后续查询、列表过滤和取消/删除。首次查询应在创建�
 
 ## 失败处理
 
-参数错误、模型不支持的分辨率或媒体约束失败会直接返回 4xx。任务已经创建但上游
-生成失败时，查询接口返回 status: "failed" 和 error；创建成功只表示任务已受理。
+本站明确拒绝的字段、参数类型、模型分辨率和媒体结构错误会在任务创建前返回
+`400`，不会产生已创建的任务。其他参数可能在任务处理时继续校验；任务已经创建
+但生成失败时，查询接口返回 `status: "failed"` 和 `error`。创建成功只表示任务
+已受理。
