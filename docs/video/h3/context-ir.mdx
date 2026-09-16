@@ -1,0 +1,98 @@
+---
+sidebar_position: 4
+title: 创建 H3-Context-IR 任务
+---
+
+# 创建 H3-Context-IR 任务
+
+H3-Context-IR 会理解文本与多模态上下文，生成更完整的结构化视频提示词。它本身
+不会生成视频，也不会返回视频 URL；输出的增强提示词可直接用于 H3 视频生成，
+也可作为视频再生成所需的最终 prompt。
+
+## 请求
+
+~~~http
+POST https://video.pinducloud.com.cn/hailuo/v2/h3_context_ir
+~~~
+
+~~~bash
+curl --request POST "$BASE_URL/hailuo/v2/h3_context_ir" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "model": "MiniMax-H3",
+    "content": [
+      {"type": "text", "text": "把这段想法扩展成电影级的多镜头视频提示词"},
+      {
+        "type": "image_url",
+        "role": "reference_image",
+        "image_url": {"url": "https://cdn.example.com/reference.png"}
+      }
+    ],
+    "duration": 5,
+    "ratio": "16:9"
+  }'
+~~~
+
+## 参数
+
+| 字段 | 类型 | 必填 | 取值或范围 | 说明 |
+| --- | --- | --- | --- | --- |
+| model | string | 是 | MiniMax-H3 | 固定模型 |
+| content | array | 是 | 与 H3 生成相同的多模态项 | 必须有非空 text |
+| duration | integer | 是 | 4~15 | 目标视频时长，秒 |
+| ratio | string | 否 | H3 生成接口的比例枚举 | 目标画面比例 |
+| callback_url | string | 否 | 公网可访问地址 | 可选状态回调 |
+
+本接口没有 resolution 参数。图片、视频、音频格式、数量和组合限制沿用[H3
+视频生成接口](./create)。
+
+## 任务结果
+
+创建成功先返回异步任务 ID：
+
+~~~json
+{
+  "task_id": "task_gateway_ir_01"
+}
+~~~
+
+完成后调用查询接口，成功任务的关键字段如下：
+
+~~~json
+{
+  "task": {
+    "id": "task_gateway_ir_01",
+    "model": "MiniMax-H3",
+    "status": "succeeded",
+    "content": {
+      "prompt": "integrated_multimodal_description: [Shot 1] ..."
+    },
+    "task_type": "h3_context_ir",
+    "modality": "text",
+    "usage": {
+      "total_tokens": 9090,
+      "prompt_tokens": 5664,
+      "completion_tokens": 3426
+    }
+  }
+}
+~~~
+
+task.content.prompt 是增强后的完整提示词。调用视频生成时，把它作为一个
+content 文本项传入：
+
+~~~json
+{
+  "model": "MiniMax-H3",
+  "content": [
+    {"type": "text", "text": "integrated_multimodal_description: [Shot 1] ..."}
+  ],
+  "resolution": "2K",
+  "duration": 5,
+  "ratio": "16:9"
+}
+~~~
+
+Context-IR 任务按实际 prompt_tokens 与 completion_tokens 分开结算。提交阶段
+不预扣视频费用；失败任务不产生最终 Token 费用。

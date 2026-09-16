@@ -1,0 +1,241 @@
+---
+sidebar_position: 3
+title: 使用 Seedance 私域素材库
+---
+
+# 使用 Seedance 私域素材库
+
+PinduCloud 私域素材库用于保存可重复使用的图片、视频和音频，并将素材同步到
+Seedance 素材组。素材库中的文件保存在配置的阿里云 OSS Bucket 中；Seedance
+生成任务使用素材的临时签名 URL作为输入。
+
+:::warning
+素材的 `asset_id` 只用于素材库的管理接口，不能直接填入 Seedance 的
+`image_url.url`、`video_url.url` 或 `audio_url.url`。提交生成任务时，必须使用
+素材列表返回的 `preview_url`。
+:::
+
+## 在控制台上传
+
+1. 登录 PinduCloud，打开 **私域素材库**（`/seedance-assets`）。
+2. 创建一个素材组并选中它。
+3. 将媒体文件拖入素材列表区域，或点击上传按钮选择多个文件。上传队列会逐个
+   处理文件，并显示排队、上传中、已上传和失败状态。
+4. 等待素材状态变为 **Active**。`Processing` 表示上游还在审核，`Failed` 表示
+   上游审核失败；这两种状态都不应作为生成任务的输入。
+5. 在素材卡片或列表中确认预览可用，再按下面的方式取得媒体 URL并提交任务。
+
+支持的上传大小上限为：
+
+| 类型 | 最大大小 |
+| --- | ---: |
+| 图片 | 30 MB |
+| 视频 | 50 MB |
+| 音频 | 15 MB |
+
+上传接口会根据文件 MIME 类型或扩展名识别素材类型。图片、视频和音频仍需满足
+Seedance 对格式、尺寸、时长和帧率的限制，详见[创建任务](./create)。
+
+## 通过接口管理素材
+
+素材管理接口和视频生成接口使用同一个 PinduCloud 用户 API Token。请求头为：
+
+~~~http
+Authorization: Bearer <PINDUCLOUD_API_TOKEN>
+~~~
+
+下面的示例使用环境变量保存地址和 Token：
+
+~~~bash
+export BASE_URL="https://video.pinducloud.com.cn"
+export API_KEY="sk-your-pinducloud-token"
+~~~
+
+### 创建素材组
+
+~~~bash
+curl --request POST "$BASE_URL/api/user/seedance/asset-groups" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"name":"product-assets"}'
+~~~
+
+示例响应：
+
+~~~json
+{
+  "success": true,
+  "data": {
+    "id": 12,
+    "group_id": "asset-group-xxxxxxxx",
+    "name": "product-assets",
+    "status": "Active"
+  }
+}
+~~~
+
+后续上传和查询使用响应中的 `group_id`。素材组修改和删除接口的路径参数使用
+响应中的本地数字 `id`，不要把 `group_id` 放在路径中。
+
+### 上传本地媒体
+
+~~~bash
+curl --request POST "$BASE_URL/api/user/seedance/assets/upload" \
+  --header "Authorization: Bearer $API_KEY" \
+  --form "group_id=asset-group-xxxxxxxx" \
+  --form "file=@./character.png" \
+  --form "name=character.png"
+~~~
+
+文件会按以下顺序处理：
+
+1. 网关校验类型、大小和基础文件条件。
+2. 文件写入私有 OSS，并生成供上游读取的临时地址。
+3. 网关调用 Seedance `CreateAsset`，把素材加入指定素材组。
+4. 网关保存本地素材记录并异步同步审核状态。
+
+上传请求返回 `202` 只表示素材已进入处理流程，不表示素材已经可以用于生成。
+
+### 查询素材状态和 URL
+
+~~~bash
+curl --get "$BASE_URL/api/user/seedance/assets" \
+  --header "Authorization: Bearer $API_KEY" \
+  --data-urlencode "group_id=asset-group-xxxxxxxx" \
+  --data-urlencode "p=1" \
+  --data-urlencode "page_size=24" \
+  --data-urlencode "status=Active"
+~~~
+
+可用素材的响应示例：
+
+~~~json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 101,
+      "asset_id": "asset-xxxxxxxx",
+      "group_id": "asset-group-xxxxxxxx",
+      "name": "character.png",
+      "asset_type": "Image",
+      "status": "Active",
+      "preview_url": "https://oss-cn-hangzhou.aliyuncs.com/private-assets/users/1/2026/09/16/xxxxxxxx.png?签名参数"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "page_size": 24,
+  "has_pending": false
+}
+~~~
+
+只有 `status` 为 `Active` 且 `preview_url` 非空时，才应继续提交生成任务。
+`preview_url` 是按需生成的 OSS 签名地址，有效期为 1 小时。地址过期后重新
+查询素材列表即可取得新的地址；不要把它当作永久下载地址保存。
+
+### 重命名和删除
+
+素材组和素材删除会同时处理上游记录、本地记录和 OSS 对象。删除素材组或素材前，
+请先确认没有正在使用该素材的外部任务。
+
+| 能力 | 方法 | 路径 |
+| --- | --- | --- |
+| 查询素材组 | GET | `/api/user/seedance/asset-groups` |
+| 重命名素材组 | PUT | `/api/user/seedance/asset-groups/:id` |
+| 删除素材组 | DELETE | `/api/user/seedance/asset-groups/:id` |
+| 查询素材 | GET | `/api/user/seedance/assets` |
+| 刷新单个素材状态 | POST | `/api/user/seedance/assets/:id/refresh` |
+| 删除单个素材 | DELETE | `/api/user/seedance/assets/:id` |
+| 批量删除素材 | POST | `/api/user/seedance/assets/batch-delete` |
+
+这里的素材 `:id` 是素材列表中的本地数字 `id`。批量删除请求体示例：
+
+~~~bash
+curl --request POST "$BASE_URL/api/user/seedance/assets/batch-delete" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"ids":[101,102,103]}'
+~~~
+
+批量删除可能先返回排队结果。返回的 `pending_ids` 仍在后台清理，查询素材列表
+确认它们消失后再视为完成；`failed_ids` 需要重新处理。
+
+## 在 Seedance 任务中使用
+
+先从素材列表取出 `Active` 素材的 `preview_url`，再将它放入 Seedance 创建请求的
+对应媒体项。以下示例使用私域素材库中的图片作为首帧：
+
+~~~bash
+curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "model": "doubao-seedance-2-0-260128",
+    "content": [
+      {
+        "type": "text",
+        "text": "让角色自然转身并向镜头走来，保持服装和外观一致"
+      },
+      {
+        "type": "image_url",
+        "role": "first_frame",
+        "image_url": {
+          "url": "<ACTIVE_ASSET_PREVIEW_URL>"
+        }
+      }
+    ],
+    "resolution": "720p",
+    "duration": 5,
+    "watermark": false
+  }'
+~~~
+
+不同素材类型对应的 `content` 项如下：
+
+| 素材 | `type` | URL 字段 | 常用 `role` |
+| --- | --- | --- | --- |
+| 图片 | `image_url` | `image_url.url` | `first_frame`、`last_frame`、`reference_image` |
+| 视频 | `video_url` | `video_url.url` | `reference_video` |
+| 音频 | `audio_url` | `audio_url.url` | `reference_audio` |
+
+首帧/首尾帧和多模态参考输入的组合规则、模型限制和媒体格式要求，见[创建
+Seedance 视频生成任务](./create)。
+
+提交任务前应重新查询一次素材列表，确保 URL 尚未过期且素材仍为 `Active`。网关
+会将这个 URL 按 Seedance 请求原样发送给上游；如果任务排队时间可能超过签名地址
+的剩余有效期，应在任务开始前重新取得 URL。
+
+## 使用前准备
+
+完成以下配置后，才能创建素材组和上传文件：
+
+1. 在 **系统设置 → 运维 → 私域素材 OSS** 中填写 OSS Region、Endpoint、Bucket、
+   Object Prefix、AccessKey ID 和 AccessKey Secret。
+2. OSS 使用私有 Bucket，并允许服务端账号执行 `PutObject`、`GetObject` 和
+   `DeleteObject`。
+3. 至少有一个启用的 Seedance 渠道。素材组创建时会绑定当时选中的渠道账号，
+   后续素材同步和删除仍使用该账号。
+
+Endpoint 必须是 HTTPS 源站地址，不要把 AccessKey 写入浏览器代码、生成请求或
+文档示例。Region、Endpoint 和 Bucket 在仍有 OSS 素材时不能更改；需要更换存储
+位置时，应先删除相关素材。
+
+## 常见问题
+
+### 上传成功但不能生成
+
+检查素材是否仍为 `Processing`、`Failed` 或 `Deleting`。只有上游审核完成并返回
+`Active` 状态后，素材才适合作为输入。还要确认生成请求使用的是最新的
+`preview_url`，而不是 `asset_id` 或已经过期的旧 URL。
+
+### 预览地址失效
+
+预览地址是短期签名 URL。重新调用素材列表接口，或在控制台刷新对应素材，取得
+新的 `preview_url` 后再调用生成接口。
+
+### 素材组创建失败
+
+确认存在启用的 Seedance 渠道，并检查渠道账号是否有对应的素材 Action 权限。
+如果 OSS 配置缺失或 Bucket、Region、Endpoint 不匹配，创建本地上传素材时也会
+失败。

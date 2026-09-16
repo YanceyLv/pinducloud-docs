@@ -1,0 +1,71 @@
+---
+sidebar_position: 7
+title: 取消或删除 MiniMax-H3 任务
+---
+
+# 取消或删除 MiniMax-H3 任务
+
+该接口会根据任务状态选择取消或删除动作，适用于视频生成、视频再生成和
+H3-Context-IR。
+
+## 请求
+
+~~~http
+DELETE https://video.pinducloud.com.cn/hailuo/v2/video_generation/:task_id
+~~~
+
+~~~bash
+curl --request DELETE \
+  "$BASE_URL/hailuo/v2/video_generation/task_gateway_h3_01" \
+  --header "Authorization: Bearer $API_KEY"
+~~~
+
+## 行为规则
+
+| 当前状态 | 动作 | 计费和记录影响 |
+| --- | --- | --- |
+| queued | cancelled | 任务停止排队，尚未开始的预扣按结算规则退还 |
+| running | 不可取消 | 查询任务直至进入终态 |
+| succeeded | deleted | 删除上游任务记录，已结算费用不因删除自动退还 |
+| failed | deleted | 删除失败任务记录，失败任务不产生最终费用 |
+| cancelled | 不可恢复 | 保留网关任务和计费历史 |
+
+删除前网关会尝试刷新本地任务状态并确认上游结果。如果上游操作无法确认，接口
+返回错误，不会把未知状态直接转换成成功或退款。
+
+## 响应示例
+
+取消排队任务：
+
+~~~json
+{
+  "task_id": "task_gateway_h3_01",
+  "action": "cancelled",
+  "status": "cancelled"
+}
+~~~
+
+删除已结束任务：
+
+~~~json
+{
+  "task_id": "task_gateway_h3_01",
+  "action": "deleted",
+  "status": "deleted"
+}
+~~~
+
+## 错误处理
+
+| HTTP 状态码 | code 或现象 | 说明 |
+| --- | --- | --- |
+| 400 | invalid_request | ID、状态或请求字段不合法 |
+| 401 | unauthorized | Token 无效或缺失 |
+| 404 | task_not_found | 任务不存在或不属于当前用户 |
+| 409 | 状态冲突 | 当前任务不允许重复取消或删除 |
+| 502 | task_sync_failed | 删除前无法同步上游状态 |
+| 503 | task_cancel_pending | 取消已提交但还未确认 |
+| 503 | task_settlement_unavailable | 最终用量尚未可用，等待对账 |
+
+删除只影响上游任务记录，不会把已经返回的临时视频 URL变成永久地址。需要保留
+视频时，先下载或转存文件。

@@ -1,0 +1,215 @@
+---
+sidebar_position: 2
+title: 创建 Seedance 视频生成任务
+---
+
+# 创建 Seedance 视频生成任务
+
+创建接口是异步接口。请求被接受后先返回任务 ID，视频生成完成后再通过查询
+接口取得下载地址。
+
+## 请求
+
+~~~http
+POST https://video.pinducloud.com.cn/doubao/api/v3/contents/generations/tasks
+~~~
+
+~~~bash
+curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "model": "doubao-seedance-2-0-260128",
+    "content": [
+      {"type": "text", "text": "一只纸飞机穿过城市上空，镜头跟随它飞过屋顶"}
+    ],
+    "resolution": "1080p",
+    "ratio": "16:9",
+    "duration": 5,
+    "generate_audio": false,
+    "watermark": false
+  }'
+~~~
+
+## 顶层字段
+
+| 字段 | 类型 | 必填 | 取值或范围 | 说明 |
+| --- | --- | --- | --- | --- |
+| model | string | 是 | 已开放的 Seedance 模型 ID | 参与渠道和计费选择 |
+| content | array | 是 | 文本、图片、视频、音频或 Draft 项 | 描述生成内容及参考素材 |
+| resolution | string | 否 | 480p、720p、1080p、4k | 输出分辨率；模型能力会进一步限制 |
+| ratio | string | 否 | 16:9、4:3、1:1、3:4、9:16、21:9、adaptive | 输出画面比例 |
+| duration | integer | 否 | -1 或整数秒 | -1 由模型在支持范围内选择时长 |
+| frames | integer | 否 | 29~289，且满足 25 + 4n | 与 duration 二选一；2.0/1.5 暂不支持 |
+| callback_url | string | 否 | 公网 HTTPS 地址 | 状态变化时接收回调，回调体按查询结果返回 |
+| return_last_frame | boolean | 否 | true / false | 成功时是否返回尾帧地址，默认 false |
+| service_tier | string | 否 | default / flex | 在线或离线推理等级 |
+| execution_expires_after | integer | 否 | 3600~259200 | 从创建时间起的过期秒数，默认 172800 |
+| generate_audio | boolean | 否 | true / false | 2.0 和 1.5 pro 支持有声视频 |
+| draft | boolean | 否 | true / false | 仅 1.5 pro 支持 Draft 样片 |
+| tools | array | 否 | 当前支持 web_search | 仅 2.0 系列支持联网搜索 |
+| safety_identifier | string | 否 | 最长 64 字符 | 终端用户稳定标识 |
+| priority | integer | 否 | 0~9 | 仅 2.0 系列；数值越大越优先排队 |
+| seed | integer | 否 | -1~2^32-1 | 控制随机性，默认 -1 |
+| camera_fixed | boolean | 否 | true / false | 是否固定摄像头；2.0 暂不支持 |
+| watermark | boolean | 否 | true / false | 是否添加右下角 AIGC 水印 |
+
+### 时长与帧数
+
+duration 用于指定整数秒。frames 用于需要小数秒的旧模型场景；它与
+duration 不能同时依赖，且 frames 的优先级高于 duration。各模型的官方有效
+范围仍需遵循渠道实际能力：
+
+| 模型系列 | duration |
+| --- | --- |
+| Seedance 2.0 / 2.0 fast | 4~15 秒，或 -1 |
+| Seedance 1.5 pro | 4~12 秒，或 -1 |
+| Seedance 1.0 pro / pro fast | 2~12 秒 |
+
+网关会拒绝非整数和明显越界的时长；即使通过网关边界检查，上游仍可能因模型不
+支持某个时长而返回 400。
+
+### content 项
+
+每一项通过 type 指明内容种类。文本项可以放在媒体项之前或之后，多个文本项
+会按顺序拼接。
+
+| type | 主要字段 | role | 用途 |
+| --- | --- | --- | --- |
+| text | text | 无 | 视频提示词 |
+| image_url | image_url.url | first_frame、last_frame 或 reference_image | 首帧、尾帧或参考图 |
+| video_url | video_url.url | reference_video | 参考视频，2.0 系列支持 |
+| audio_url | audio_url.url | reference_audio | 参考音频，2.0 系列支持 |
+| draft_task | draft_task.id | 无 | 使用已有 Draft 任务生成正式视频 |
+
+媒体 URL 可以是公网地址、符合上游要求的 Base64 data URI，或上游支持的素材
+引用。PinduCloud 自定义路由不接受本地文件路径和 multipart 上传，URL 必须能被
+上游网络环境读取。
+
+## 输入约束
+
+### 图片
+
+- JPEG、PNG、WEBP、BMP、TIFF、GIF；1.5 pro 和 2.0 系列另支持 HEIC、HEIF。
+- 单张小于 30 MB，宽高均需在 300~6000 像素之间。
+- 宽高比需在 (0.4, 2.5) 范围内。
+- 首尾帧各最多一张；2.0 多模态参考图片最多 9 张。
+
+### 视频
+
+- 仅 Seedance 2.0 系列支持输入视频，容器为 MP4 或 MOV。
+- 视频编码支持 H.264/AVC、H.265/HEVC；音频支持 AAC、MP3。
+- 单个视频 2~15 秒、24~60 FPS、大小不超过 50 MB，最多 3 个。
+- 所有参考视频总时长不超过 15 秒，宽高比为 [0.4, 2.5]，宽高为 300~6000
+  像素。
+
+### 音频
+
+- 仅 Seedance 2.0 系列支持输入音频，格式为 WAV 或 MP3。
+- 单段音频 2~15 秒、大小不超过 15 MB，最多 3 段，总时长不超过 15 秒。
+- 音频不能单独出现，至少还要提供一张参考图或一个参考视频。
+
+## 常用场景
+
+### 首帧图生视频
+
+~~~bash
+curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "model": "doubao-seedance-2-0-fast-260128",
+    "content": [
+      {"type": "text", "text": "镜头缓慢推近，湖面出现自然的涟漪"},
+      {
+        "type": "image_url",
+        "image_url": {"url": "https://cdn.example.com/lake-start.jpg"},
+        "role": "first_frame"
+      }
+    ],
+    "resolution": "720p",
+    "ratio": "adaptive",
+    "duration": 5
+  }'
+~~~
+
+### 首尾帧图生视频
+
+~~~bash
+curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "model": "doubao-seedance-2-0-260128",
+    "content": [
+      {"type": "text", "text": "让天空从深蓝自然过渡到日出后的橙红色"},
+      {
+        "type": "image_url",
+        "image_url": {"url": "https://cdn.example.com/sunrise-start.jpg"},
+        "role": "first_frame"
+      },
+      {
+        "type": "image_url",
+        "image_url": {"url": "https://cdn.example.com/sunrise-end.jpg"},
+        "role": "last_frame"
+      }
+    ],
+    "resolution": "720p",
+    "duration": 8
+  }'
+~~~
+
+### 多模态参考
+
+2.0 系列可以把图片、视频和音频作为参考输入。提示词中用“图片 1”“视频 1”
+等序号指代对应素材，顺序按各类素材在 content 中的出现顺序计算。
+
+~~~json
+{
+  "model": "doubao-seedance-2-0-260128",
+  "content": [
+    {"type": "text", "text": "参考图片 1 的角色在参考视频 1 的动作基础上说话"},
+    {"type": "image_url", "role": "reference_image", "image_url": {"url": "https://cdn.example.com/character.png"}},
+    {"type": "video_url", "role": "reference_video", "video_url": {"url": "https://cdn.example.com/motion.mp4"}},
+    {"type": "audio_url", "role": "reference_audio", "audio_url": {"url": "https://cdn.example.com/voice.mp3"}}
+  ],
+  "resolution": "720p",
+  "duration": 6,
+  "generate_audio": true
+}
+~~~
+
+### Draft 转正式视频
+
+1. 先使用 draft: true 创建 1.5 pro 样片任务。
+2. 查询样片并确认结果。
+3. 将样片任务 ID放入新的 draft_task.id，创建正式任务。
+
+~~~json
+{
+  "model": "doubao-seedance-1-5-pro-251215",
+  "content": [
+    {"type": "draft_task", "draft_task": {"id": "task_gateway_draft_01"}}
+  ],
+  "resolution": "720p",
+  "duration": 8,
+  "draft": false
+}
+~~~
+
+提交时使用公开任务 ID，网关校验任务归属后映射为上游 Draft ID。
+
+## 成功响应
+
+~~~json
+{
+  "id": "task_gateway_doubao_01"
+}
+~~~
+
+id 用于后续查询、列表过滤和取消/删除。首次查询应在创建后等待约 10 秒。
+
+## 失败处理
+
+参数错误、模型不支持的分辨率或媒体约束失败会直接返回 4xx。任务已经创建但上游
+生成失败时，查询接口返回 status: "failed" 和 error；创建成功只表示任务已受理。

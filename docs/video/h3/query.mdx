@@ -1,0 +1,135 @@
+---
+sidebar_position: 5
+title: 查询 MiniMax-H3 任务
+---
+
+# 查询 MiniMax-H3 任务
+
+这个查询接口同时适用于普通生成、视频再生成和 H3-Context-IR。使用创建接口返回
+的网关公开 task_id，不要传渠道内部 ID。
+
+## 请求
+
+~~~http
+GET https://video.pinducloud.com.cn/hailuo/v2/query/video_generation/:task_id
+~~~
+
+~~~bash
+curl --request GET \
+  "$BASE_URL/hailuo/v2/query/video_generation/task_gateway_h3_01" \
+  --header "Authorization: Bearer $API_KEY"
+~~~
+
+任务刚提交时可能只有 task.id，等上游完成初始化后再次查询即可。
+
+## 任务状态
+
+| task.status | 含义 |
+| --- | --- |
+| queued | 排队中 |
+| running | 运行中 |
+| succeeded | 成功，可读取产物 |
+| failed | 失败，查看 error |
+| cancelled | 已取消 |
+
+## 响应结构
+
+~~~json
+{
+  "task": {
+    "id": "task_gateway_h3_01",
+    "model": "MiniMax-H3",
+    "status": "succeeded",
+    "created_at": 1785125529,
+    "updated_at": 1785125946,
+    "content": {
+      "url": "https://cdn.example.com/h3-output.mp4"
+    },
+    "resolution": "2K",
+    "duration": 5,
+    "ratio": "16:9",
+    "task_type": "generation",
+    "modality": "video",
+    "usage": {
+      "total_seconds": 5,
+      "input_seconds": 0,
+      "output_seconds": 5,
+      "input_image_count": 0
+    }
+  }
+}
+~~~
+
+## task 字段
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| id | string | 网关公开任务 ID |
+| model | string | MiniMax-H3 |
+| status | string | 当前状态 |
+| created_at / updated_at | integer | Unix 秒时间戳 |
+| content.url | string | 视频任务成功后的临时下载地址 |
+| content.prompt | string | Context-IR 成功后的增强提示词 |
+| resolution | string | 768P 或 2K，Context-IR 不适用 |
+| duration | integer | 视频时长，秒 |
+| ratio | string | 实际宽高比 |
+| task_type | string | generation、regeneration 或 h3_context_ir |
+| modality | string | 视频任务为 video，Context-IR 为 text |
+| error | object | 失败时返回 code 和 message |
+| usage | object | 计费和用量字段 |
+
+视频任务的 usage：
+
+| 字段 | 说明 |
+| --- | --- |
+| total_seconds | input_seconds + output_seconds |
+| input_seconds | 参考视频输入秒数 |
+| output_seconds | 输出视频秒数 |
+| input_image_count | 计费用输入图片总数 |
+
+Context-IR 任务的 usage：
+
+| 字段 | 说明 |
+| --- | --- |
+| total_tokens | 输入和输出 Token 总数 |
+| prompt_tokens | 输入 Token 数 |
+| completion_tokens | 输出 Token 数 |
+
+## Context-IR 成功响应
+
+~~~json
+{
+  "task": {
+    "id": "task_gateway_ir_01",
+    "model": "MiniMax-H3",
+    "status": "succeeded",
+    "content": {"prompt": "integrated_multimodal_description: [Shot 1] ..."},
+    "task_type": "h3_context_ir",
+    "modality": "text",
+    "usage": {
+      "total_tokens": 9090,
+      "prompt_tokens": 5664,
+      "completion_tokens": 3426
+    }
+  }
+}
+~~~
+
+## 失败响应
+
+~~~json
+{
+  "task": {
+    "id": "task_gateway_h3_02",
+    "model": "MiniMax-H3",
+    "status": "failed",
+    "error": {
+      "code": "1026",
+      "message": "video description contains sensitive content"
+    }
+  }
+}
+~~~
+
+拿到终态后停止轮询。视频 URL可能过期，过期后可再次查询以获取上游提供的新签名
+地址，但任务本身也受服务端保留窗口限制。

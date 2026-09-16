@@ -1,0 +1,80 @@
+---
+sidebar_position: 1
+title: 豆包 Seedance 视频生成
+---
+
+# 豆包 Seedance 视频生成
+
+这组接口通过 Seedance 模型提交文生视频、图生视频和多模态参考视频任务。
+请求体使用 Ark/Seedance 的 content 结构，任务结果通过异步查询接口取得。
+
+## 服务地址
+
+~~~text
+https://video.pinducloud.com.cn
+~~~
+
+## 接口列表
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | /doubao/api/v3/contents/generations/tasks | 创建异步视频任务 |
+| GET | /doubao/api/v3/contents/generations/tasks/:task_id | 查询单个任务 |
+| GET | /doubao/api/v3/contents/generations/tasks | 分页查询当前用户任务 |
+| DELETE | /doubao/api/v3/contents/generations/tasks/:task_id | 取消或删除任务 |
+
+### 任务场景
+
+| 场景 | content 组成 | 适用模型 |
+| --- | --- | --- |
+| 文生视频 | 文本项 | 所有已声明模型 |
+| 首帧图生视频 | 文本项 + 一张首帧图 | 全系列 |
+| 首尾帧图生视频 | 文本项 + first_frame 和 last_frame | 2.0、1.5 pro、1.0 pro |
+| 多模态参考生成 | 文本项 + 参考图/视频/音频 | 2.0 系列 |
+| 有声视频 | generate_audio: true | 2.0 系列、1.5 pro |
+| Draft 样片 | draft: true | 1.5 pro |
+
+首帧/首尾帧和多模态参考是互斥的输入场景。不要在同一个请求中同时混用
+first_frame、last_frame 与 reference_* 角色。
+
+## 模型与分辨率
+
+插件当前声明的模型：
+
+~~~text
+doubao-seedance-1-0-pro-250528
+doubao-seedance-1-0-lite-t2v
+doubao-seedance-1-0-lite-i2v
+doubao-seedance-1-5-pro-251215
+doubao-seedance-2-0-260128
+doubao-seedance-2-0-fast-260128
+doubao-seedance-2-0-mini-260615
+doubao-seedance-2-5-260628
+~~~
+
+Seedance 的分辨率硬性限制如下：
+
+| 模型 | 可用分辨率 |
+| --- | --- |
+| doubao-seedance-2-0-fast-260128 | 480p、720p |
+| doubao-seedance-2-0-mini-260615 | 480p、720p |
+| doubao-seedance-2-0-260128 | 480p、720p、1080p、4k |
+| 其他已开放 Seedance 模型 | 由上游接口校验模型实际能力 |
+
+Fast 和 Mini 模型不能传 1080p、4k 或等价的高分辨率尺寸。未传 resolution 时，
+Fast/Mini 按 720p 进行预估，其余模型按 1080p 进行预估；实际结果以查询响应的
+resolution 字段为准。
+
+## 结果与保留时间
+
+创建成功后返回一个公开任务 ID，查询成功时视频地址在
+content.video_url 中，可能还会有 content.last_frame_url。视频签名地址是
+临时地址，客户端应在地址有效期内下载或转存；任务记录查询窗口为 7 天。
+
+## 私域素材库
+
+Seedance 支持使用 PinduCloud 私域素材库中的图片、视频和音频。上传完成并审核
+为 `Active` 后，从素材列表取得临时 `preview_url`，将它放入标准 `content` 媒体项
+的 URL字段，再提交生成任务。`asset_id` 只用于素材管理，不能直接作为媒体输入。
+
+完整流程、OSS 配置、上传接口和示例见[使用 Seedance 私域素材库](./private-assets)。

@@ -35,6 +35,9 @@ npm.cmd run build
 - `docs/images.mdx`：图像生成
 - `docs/models.mdx`：模型列表
 - `docs/errors.mdx`：错误码
+- `docs/video/overview.mdx`：视频生成接口总览
+- `docs/video/seedance/`：豆包 Seedance 自定义接口
+- `docs/video/h3/`：MiniMax-H3 自定义接口
 
 ## API Base URL
 

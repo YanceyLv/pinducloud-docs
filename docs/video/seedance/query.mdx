@@ -1,0 +1,134 @@
+---
+sidebar_position: 3
+title: 查询 Seedance 视频生成任务
+---
+
+# 查询 Seedance 视频生成任务
+
+使用创建接口返回的公开任务 ID读取最新任务快照。网关会把上游状态和结果保存到
+当前用户的任务记录中，并阻止跨用户读取。
+
+## 请求
+
+~~~http
+GET https://video.pinducloud.com.cn/doubao/api/v3/contents/generations/tasks/:task_id
+~~~
+
+~~~bash
+curl --request GET \
+  "$BASE_URL/doubao/api/v3/contents/generations/tasks/task_gateway_doubao_01" \
+  --header "Authorization: Bearer $API_KEY"
+~~~
+
+路径参数 task_id 必须是本次调用方创建的 Seedance 公开任务 ID；渠道内部的上游
+任务 ID不适用于此接口。
+
+## 状态值
+
+| 状态 | 含义 |
+| --- | --- |
+| queued | 已提交，等待上游调度 |
+| running | 正在生成 |
+| succeeded | 生成成功，content.video_url 可用 |
+| failed | 生成失败，查看 error |
+| cancelled | 已取消 |
+| expired | 已超过任务有效期 |
+
+## 响应字段
+
+查询结果是官方任务字段的网关快照，常用字段如下：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| id | string | 网关公开任务 ID |
+| model | string | 实际使用的模型 |
+| status | string | 当前任务状态 |
+| content.video_url | string | 成功后的 MP4 下载地址 |
+| content.last_frame_url | string | 请求了 return_last_frame 时的尾帧地址 |
+| created_at | integer | 创建时间，Unix 秒时间戳 |
+| updated_at | integer | 最近更新时间，Unix 秒时间戳 |
+| service_tier | string | default 或 flex |
+| duration | integer | 实际视频时长，秒 |
+| seed | integer | 实际使用的种子 |
+| resolution | string | 实际分辨率 |
+| ratio | string | 实际宽高比 |
+| framespersecond | integer | 实际帧率，通常为 24 |
+| generate_audio | boolean | 是否包含音频 |
+| draft | boolean | 是否为 Draft 任务 |
+| priority | integer | 任务优先级 |
+| execution_expires_after | integer | 任务过期阈值，秒 |
+| usage | object | 用量信息，成功后通常返回 |
+| error | object | 失败原因，失败任务才返回 |
+
+usage.completion_tokens 是生成用量，usage.total_tokens 是总用量。Seedance 当前
+没有独立的输入 Token 概念。
+
+## 响应示例
+
+### 成功
+
+~~~json
+{
+  "id": "task_gateway_doubao_01",
+  "model": "doubao-seedance-2-0-260128",
+  "status": "succeeded",
+  "content": {
+    "video_url": "https://cdn.example.com/generated.mp4",
+    "last_frame_url": "https://cdn.example.com/generated-last-frame.png"
+  },
+  "resolution": "1080p",
+  "ratio": "16:9",
+  "duration": 5,
+  "framespersecond": 24,
+  "seed": 11,
+  "generate_audio": false,
+  "draft": false,
+  "usage": {
+    "completion_tokens": 243000,
+    "total_tokens": 243000
+  }
+}
+~~~
+
+### 处理中
+
+~~~json
+{
+  "id": "task_gateway_doubao_01",
+  "model": "doubao-seedance-2-0-260128",
+  "status": "running",
+  "created_at": 1782286167,
+  "updated_at": 1782286260
+}
+~~~
+
+创建后的极短时间内，返回也可能只有：
+
+~~~json
+{
+  "id": "task_gateway_doubao_01"
+}
+~~~
+
+这是上游任务尚未完成初始化登记的短暂状态，不代表任务创建失败。
+
+### 失败
+
+~~~json
+{
+  "id": "task_gateway_doubao_01",
+  "model": "doubao-seedance-2-0-260128",
+  "status": "failed",
+  "error": {
+    "code": "ContentFilteredError",
+    "message": "The content was filtered by the provider."
+  }
+}
+~~~
+
+## 轮询规则
+
+- 首次查询在创建后等待约 10 秒。
+- 后续查询间隔不低于 10 秒。
+- 收到 succeeded、failed、cancelled 或 expired 后停止轮询。
+- video_url 和尾帧 URL可能是签名地址，应在有效期内转存。

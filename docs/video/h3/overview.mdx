@@ -1,0 +1,79 @@
+---
+sidebar_position: 1
+title: MiniMax-H3 视频生成
+---
+
+# MiniMax-H3 视频生成
+
+MiniMax-H3 通过一个 V2 风格的多模态任务接口接收文本、图片、视频和音频，输出
+768P 或 2K 视频。配套接口还支持把 768P 任务再生成到 2K，以及只生成增强提示词
+的 H3-Context-IR 任务。
+
+## 服务地址
+
+~~~bash
+export BASE_URL="https://video.pinducloud.com.cn"
+export API_KEY="sk-your-pinducloud-token"
+~~~
+
+请求使用 PinduCloud 用户 Token：
+
+~~~http
+Authorization: Bearer <PINDUCLOUD_API_TOKEN>
+Content-Type: application/json
+~~~
+
+## 接口一览
+
+| 能力 | 方法 | 路径 |
+| --- | --- | --- |
+| 创建视频生成任务 | POST | /hailuo/v2/video_generation |
+| 创建视频再生成任务 | POST | /hailuo/v2/video_regeneration |
+| 创建 H3-Context-IR 任务 | POST | /hailuo/v2/h3_context_ir |
+| 查询任务 | GET | /hailuo/v2/query/video_generation/:task_id |
+| 查询任务列表 | GET | /hailuo/v2/query/video_generation |
+| 取消或删除任务 | DELETE | /hailuo/v2/video_generation/:task_id |
+
+## 任务类型
+
+| task_type | 产物 | 说明 |
+| --- | --- | --- |
+| generation | 视频 | 普通 H3 视频生成 |
+| regeneration | 视频 | 从符合规格的 768P 源视频生成 2K |
+| h3_context_ir | 文本 | 把多模态上下文转换成增强提示词 |
+
+## 标准流程
+
+1. 调用三个创建接口之一，保存响应中的 task_id。
+2. 用 GET /hailuo/v2/query/video_generation/:task_id 查询状态。
+3. 视频任务在 task.status=succeeded 时读取 task.content.url。
+4. Context-IR 任务在成功时读取 task.content.prompt，再将增强提示词用于视频
+   生成或再生成。
+
+任务状态由网关后台轮询上游更新；上游尚未登记任务时，查询响应可能仅包含任务 ID。
+视频地址是有时效的签名 URL，应在有效期内下载或转存。
+
+## 计费可观测字段
+
+H3 查询结果会返回与任务类型对应的 usage：
+
+| 字段 | 适用任务 | 说明 |
+| --- | --- | --- |
+| total_seconds | 视频任务 | 输入参考视频秒数与输出秒数之和 |
+| input_seconds | 视频任务 | 参考视频计费秒数 |
+| output_seconds | 视频任务 | 输出视频秒数 |
+| input_image_count | 视频任务 | 输入图片数量，是否免费由网关计费配置决定 |
+| prompt_tokens | Context-IR | 输入 Token 数 |
+| completion_tokens | Context-IR | 输出 Token 数 |
+| total_tokens | Context-IR | 输入与输出 Token 总数 |
+
+usage 只返回任务实际用量，不返回单位价格。
+
+## 相关页面
+
+- [创建视频生成任务](./create)
+- [创建视频再生成任务](./regeneration)
+- [创建 H3-Context-IR 任务](./context-ir)
+- [查询任务](./query)
+- [查询任务列表](./list)
+- [取消或删除任务](./delete)

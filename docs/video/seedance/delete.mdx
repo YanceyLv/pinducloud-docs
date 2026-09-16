@@ -1,0 +1,57 @@
+---
+sidebar_position: 5
+title: 取消或删除 Seedance 视频生成任务
+---
+
+# 取消或删除 Seedance 视频生成任务
+
+DELETE 路由根据任务当前状态执行取消或删除，路径参数 task_id 为网关公开任务
+ID。
+
+## 请求
+
+~~~http
+DELETE https://video.pinducloud.com.cn/doubao/api/v3/contents/generations/tasks/:task_id
+~~~
+
+~~~bash
+curl --request DELETE \
+  "$BASE_URL/doubao/api/v3/contents/generations/tasks/task_gateway_doubao_01" \
+  --header "Authorization: Bearer $API_KEY"
+~~~
+
+## 状态行为
+
+| 当前状态 | 网关动作 | 结果 |
+| --- | --- | --- |
+| queued | 请求上游取消并确认 | 任务变为 cancelled，预扣费用按结算规则退回 |
+| running | 请求上游同步并按结果处理 | 生成已进入执行阶段时可能无法立即取消 |
+| succeeded | 请求上游删除任务 | 上游任务删除，网关保留必要的本地任务和计费历史 |
+| failed | 请求上游删除任务 | 删除上游失败任务记录，失败任务本身不产生最终费用 |
+| cancelled / expired | 按已结束任务处理 | 不能恢复任务；历史记录由网关保留 |
+
+取消或删除前网关会尽量同步上游最终状态。若上游取消已经提交但还没有办法确认，
+接口会返回错误并保留任务的可恢复状态，不会把未确认的操作当成成功退款。
+
+## 响应
+
+Seedance 上游删除成功时没有业务响应体，PinduCloud 对外返回空 JSON：
+
+~~~json
+{}
+~~~
+
+## 常见错误
+
+| HTTP 状态码 | code 或现象 | 说明 |
+| --- | --- | --- |
+| 400 | invalid_request | 任务 ID或请求格式不合法 |
+| 401 | invalid_api_key | Token缺失或无效 |
+| 404 | task_not_found | 任务不存在、不属于当前用户或已过期 |
+| 429 | rate_limit_exceeded | 请求频率超限 |
+| 502 | task_sync_failed | 删除前无法取得可靠的上游状态 |
+| 503 | task_cancel_pending | 取消已提交，等待上游确认 |
+| 503 | task_settlement_unavailable | 最终用量尚未可用，等待对账 |
+
+删除操作不可用于恢复任务，也不会延长视频下载 URL的有效期。需要保留视频时，
+请在删除前完成下载或转存。
