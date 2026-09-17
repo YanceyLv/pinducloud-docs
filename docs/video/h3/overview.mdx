@@ -66,7 +66,7 @@ H3 查询结果会返回与任务类型对应的 usage：
 | --- | --- | --- |
 | total_seconds | 视频任务 | 输入参考视频秒数与输出视频秒数之和 |
 | input_seconds | 视频任务 | 参考视频计费秒数 |
-| output_seconds | 视频任务 | 输出视频秒数 |
+| output_seconds | 视频任务 | 上游返回的输出计费秒数，可能与媒体文件的小数时长不同 |
 | input_image_count | 视频任务 | 输入图片数量，是否免费由 PinduCloud 计费设置决定 |
 | prompt_tokens | Context-IR | 输入 Token 数 |
 | completion_tokens | Context-IR | 输出 Token 数 |
@@ -75,6 +75,10 @@ H3 查询结果会返回与任务类型对应的 usage：
 usage 只返回任务实际用量，不返回单位价格。视频生成和视频再生成按秒、分辨率及
 输入媒体事实计费；Context-IR 的 `prompt_tokens` 和 `completion_tokens` 分别计费，
 具体单价由本站管理员配置。
+
+视频计费采用上游用量。例如已验证的再生成产物实际长 5.166667 秒，而上游
+`output_seconds` 为 6，本站按 6 秒结算。提交时的预扣还会在完成后调整，详情见
+[小数时长与结算](./regeneration#小数时长与结算)。
 
 ## 相关页面
 

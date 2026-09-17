@@ -71,7 +71,7 @@ curl --request GET \
 | content.url | string | 视频任务成功后的临时下载地址 |
 | content.prompt | string | Context-IR 成功后的增强提示词 |
 | resolution | string | 768P 或 2K，Context-IR 不适用 |
-| duration | integer | 视频时长，秒；Context-IR 表示目标视频时长 |
+| duration | integer | 上游回报的时长，可能不同于视频文件的小数时长；Context-IR 表示目标视频时长 |
 | ratio | string | 实际宽高比 |
 | task_type | string | generation、regeneration 或 h3_context_ir |
 | modality | string | 视频任务为 video，Context-IR 为 text |
@@ -84,8 +84,11 @@ curl --request GET \
 | --- | --- |
 | total_seconds | input_seconds + output_seconds |
 | input_seconds | 参考视频输入秒数 |
-| output_seconds | 输出视频秒数 |
+| output_seconds | 上游输出计费秒数，不保证等于媒体文件的小数时长 |
 | input_image_count | 计费用输入图片总数 |
+
+实测 5.166667 秒的再生成产物返回 `duration: 6` 和 `output_seconds: 6`，本站
+按后者结算。详情见[小数时长与结算](./regeneration#小数时长与结算)。
 
 Context-IR 任务的 usage：
 
