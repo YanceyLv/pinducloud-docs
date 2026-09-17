@@ -16,8 +16,8 @@ Seedance 素材组。素材审核完成后，生成任务通过 `asset://<AssetI
 - `asset_id` 是素材标识，审核状态为 `Active` 后，将它写成
   `asset://<AssetId>` 放入生成任务的媒体 URL 字段。
 
-`preview_url`（如果返回）仅用于控制台或客户端预览，不能作为生成任务的素材
-输入，也不能替代 `asset://<AssetId>`。
+`preview_url`（如果返回）用于预览。有效且上游可访问时，也可以作为普通公网
+媒体 URL 输入；但临时签名地址会过期，不适合替代稳定的 `asset://<AssetId>` 引用。
 :::
 
 ## 鉴权和响应
@@ -222,8 +222,8 @@ curl --request POST "$BASE_URL/api/user/seedance/assets/upload" \
 ~~~
 
 响应中的 `asset_id` 可以先保存，但只有状态变为 `Active`、`Success` 或
-`Succeeded` 后才能在生成任务中使用。`preview_url` 只用于预览，可能为空或在
-一小时后失效。
+`Succeeded` 后才能通过 `asset://` 在生成任务中使用。`preview_url` 可能为空或在
+一小时后失效，不能将它长期保存为固定输入地址。
 
 ### 登记外部媒体地址
 
@@ -309,7 +309,8 @@ curl --get "$BASE_URL/api/user/seedance/assets" \
 `preview_url` 的行为与素材来源有关：文件素材每次列表请求都会生成一小时有效的
 临时预览地址；外部地址素材使用登记时的地址。预览地址可能为空、过期或暂时不可用，
 但这不改变 `asset_id` 和素材审核状态，也不改变任务引用
-格式。生成任务始终使用 `asset://<AssetId>`。
+格式。重复使用素材时，优先采用 `asset://<AssetId>`；若直接提交公网 URL，则
+按普通外部媒体处理，需要保证上游读取时仍可访问。
 
 ### 立即刷新单个素材状态
 
@@ -405,9 +406,13 @@ curl --request POST "$BASE_URL/api/user/seedance/assets/batch-delete" \
 ]
 ~~~
 
-`asset://<AssetId>` 是私域素材在生成任务中的唯一引用格式。不要把素材列表中的
-数字 `id`、不带协议前缀的 `asset_id`、`group_id`、`preview_url` 或登记时的
-`source_url` 填入媒体 URL。首帧、首尾帧和多模态参考素材的组合限制见[创建
+使用素材 ID 引用时，格式为 `asset://<AssetId>`。不要把数字 `id`、不带协议前缀的
+`asset_id` 或 `group_id` 填入媒体 URL。若选择公网 URL 方式，地址需要满足普通
+外部媒体的可访问性和格式要求；它与私域素材 ID 引用是两种方式。
+
+2026-09-17 实测中，同一图片的 `asset://` 引用和有效 OSS 临时 `preview_url`
+均完成了 Seedance 2.0 Fast 的 4 秒、480p 首帧生成。此证据只覆盖该模型和图片
+场景，不代表所有预览地址、所有媒体类型或已过期地址均可用。首帧、首尾帧和多模态参考素材的组合限制见[创建
 Seedance 视频生成任务](./create)。
 
 ## 常见问题
@@ -420,9 +425,10 @@ HTTP `202` 只表示文件已经进入处理流程。后台会继续同步状态
 
 ### preview_url 为空或失效
 
-`preview_url` 只负责页面预览，不负责任务引用。文件素材的预览地址是短期签名地址，列表
-接口会按需重新生成；预览失败时可以重新列出素材或刷新单个素材。无论预览地址是否
-可用，任务都应使用 `asset://<AssetId>`。
+文件素材的 `preview_url` 是短期签名地址，列表接口会按需重新生成；预览失败时
+可以重新列出素材或刷新单个素材。若将它作为普通 URL 输入，需要确保有效期覆盖
+任务排队和上游读取阶段；提交时可访问不保证稍后仍可访问。稳定复用素材应优先
+使用 `asset://<AssetId>`，避免依赖已保存的旧预览地址。
 
 ### 使用 asset:// 仍然失败
 

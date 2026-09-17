@@ -44,6 +44,7 @@ curl --request POST "$BASE_URL/hailuo/v2/video_regeneration" \
   分辨率为 768P。
 - 源任务需要处于服务端可查询窗口内；部分功能可能需要额外授权。
 - resolution 必须写 2K。
+- 此模式不需要 `content` 或 `duration`，时长来自源任务。
 - 不能同时提交 content、prompt、images、image 或 input_reference。
 
 服务端会用公开任务 ID查找并验证源任务，再处理再生成请求。
@@ -98,6 +99,21 @@ content 必须包含恰好一个 `base_video`，且该项的 `type` 必须是 `v
 也不能用 multipart 上传代替 `base_video`。服务端校验内容结构，源视频的编码、尺寸、
 帧率、音轨和帧数会在任务提交后继续检查。
 
+2026-09-17 的线上再生成测试确认：`768×768`、24 FPS、124 帧、带 AAC 音轨的
+MP4 可以成功生成；宽度 770、没有音轨或仅 100 帧的源视频分别被上游拒绝。
+额外的 `reference_video` 使用 20 或 61 FPS 时，上游返回
+`video frame rate must be between 23.976 and 60 FPS`。参考视频的帧率范围与
+`base_video` 的 24 FPS 要求应分别处理。上述样本没有穷举所有尺寸、帧率边界及编码组合。
+
+已有产物的下载 URL 不保证能再次被上游读取。本轮一条 H3 签名产物地址作为
+`base_video` 被以 `media URL cannot access a private address` 拒绝，而独立公网
+地址上的合成视频成功。这个结果只说明该地址在当时上游路径被拒绝，不能推广成
+“所有签名地址都不支持”。优先使用源任务 ID 模式；使用内容模式时，应准备能被
+上游访问、有效期覆盖排队和处理过程的地址，必要时先下载并转存到自己的对象存储。
+
+提交返回任务 ID 不代表素材校验已通过。素材错误可能在后续查询中以 `failed`
+返回，应读取 `task.error`；本轮上述失败样本的预扣费用均已全额退回。
+
 ## 顶层参数
 
 | 字段 | 类型 | 必填 | 取值或范围 | 说明 |
@@ -117,5 +133,8 @@ content 必须包含恰好一个 `base_video`，且该项的 `type` 必须是 `v
 }
 ~~~
 
-再生成任务的查询结果会把 task_type 标为 regeneration，费用按源视频实际时长
-结算。
+再生成任务的查询结果将 `task_type` 标为 `regeneration`，源任务模式和内容模式
+均使用再生成价格规则。费用按上游返回的计费用量及本站价格设置结算。
+
+可选回调的实际行为见[回调地址](./create#回调地址)：创建成功不保证回调可达，
+应保留查询任务的能力。

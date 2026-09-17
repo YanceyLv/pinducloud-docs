@@ -71,7 +71,7 @@ curl --request GET \
 | content.url | string | 视频任务成功后的临时下载地址 |
 | content.prompt | string | Context-IR 成功后的增强提示词 |
 | resolution | string | 768P 或 2K，Context-IR 不适用 |
-| duration | integer | 视频时长，秒 |
+| duration | integer | 视频时长，秒；Context-IR 表示目标视频时长 |
 | ratio | string | 实际宽高比 |
 | task_type | string | generation、regeneration 或 h3_context_ir |
 | modality | string | 视频任务为 video，Context-IR 为 text |

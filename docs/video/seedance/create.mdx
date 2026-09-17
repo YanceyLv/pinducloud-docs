@@ -42,11 +42,11 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 | ratio | string | 否 | 16:9、4:3、1:1、3:4、9:16、21:9、adaptive | 输出画面比例 |
 | duration | integer | 否 | 三个 2.0 模型为 `-1` 或 4~15 的整数秒 | `-1` 由模型在支持范围内选择时长；其他模型以对应接口为准 |
 | frames | integer | 否 | 三个 2.0 模型的本站入口不接受 | 这是本站入口限制，不代表其他 Seedance 版本都不支持 |
-| callback_url | string | 否 | HTTP/HTTPS 地址，且服务端必须能访问 | 状态变化时接收回调；系统会先验证地址 |
+| callback_url | string | 否 | HTTP/HTTPS 公网地址 | 传递给上游接收状态通知；受理成功不保证回调可达 |
 | return_last_frame | boolean | 否 | true / false | 成功时是否返回尾帧地址，默认 false |
 | service_tier | string | 否 | 三个 2.0 模型的本站入口不接受 | `default`/`flex` 仅用于列表过滤，其他模型以对应接口为准 |
 | execution_expires_after | integer | 否 | 3600~259200 | 从创建时间起的过期秒数，默认 172800 |
-| generate_audio | boolean | 否 | true / false | 当前三个 2.0 模型支持；显式 `false` 会保留 |
+| generate_audio | boolean | 否 | true / false | 当前三个 2.0 模型支持；`false` 用于请求无声视频，该布尔值会保留并传递给上游 |
 | draft | boolean | 否 | 三个 2.0 模型的本站入口不接受 `true` | Draft 流程只适用于相应的其他模型 |
 | tools | array | 否 | 当前入口接受 `[{"type":"web_search"}]` | 是否实际执行以任务结果为准 |
 | safety_identifier | string | 否 | ASCII 字符串，最长 64 字符 | 终端用户稳定标识 |
@@ -101,8 +101,22 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 }
 ~~~
 
-不要把不带 `asset://` 前缀的 `asset_id` 或素材列表中的 `preview_url` 填入媒体
-URL。`preview_url` 仅用于页面预览。
+不要把不带 `asset://` 前缀的 `asset_id` 当作 URL。有效且上游可访问的
+`preview_url` 可以作为普通公网媒体地址提交；2026-09-17 已用同一图片的
+`asset://` 引用与 OSS 临时预览地址分别完成 Seedance 2.0 Fast 首帧生成。
+临时地址可能在排队或读取前过期，长期复用应优先保存 `asset_id` 并使用
+`asset://<AssetId>`，不要依赖旧预览地址。
+
+### 回调与状态同步
+
+`callback_url` 传递给上游处理。2026-09-17 实测标准版和 Fast 都能向可达接收端
+发送状态及成功通知；不可达地址也能受理并成功生成。因此不要依赖“地址预检
+通过才创建任务”的假设，也不要将受理成功视为回调一定能送达。
+
+本轮未观察到标准版或 Fast 的 `challenge` 请求，不能据此保证其他渠道行为相同。
+接收端应处理重复和乱序事件：实测 Fast 曾先发送 `running`，再发送 `queued`，
+最后发送 `succeeded`。不要让较早状态覆盖已保存的终态，最终结果通过
+[查询任务](./query)确认，并保留回调丢失时的轮询处理。
 
 ## 输入约束
 

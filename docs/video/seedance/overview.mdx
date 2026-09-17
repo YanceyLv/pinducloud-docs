@@ -83,7 +83,7 @@ Fast 和 Mini 模型不能传 `1080p`、`4k` 或等价的高分辨率尺寸。�
 | `draft`、`draft_task` | 本站当前拒绝 | 本站当前拒绝 | 2.0 不使用 Draft 流程 |
 | `camera_fixed` | 本站拒绝；标准版不支持 | 本站拒绝 | 返回 400 |
 | `output_format` | 本站只接受 `mp4`；标准版不支持 `mov` | 本站只接受 `mp4` | 返回 400 |
-| `generate_audio` | 支持 | 支持 | 显式 `false` 也会保留 |
+| `generate_audio` | 支持 | 支持 | 显式 `false` 会传递给上游，用于请求无声视频 |
 | `return_last_frame` | 支持 | 支持 | 结果可能包含 `last_frame_url` |
 | `seed`、`priority` | 按字段范围传递 | 按字段范围传递 | 查询结果以实际返回值为准 |
 | `tools` | 可传 `web_search` 工具 | 可传 | 是否实际执行以任务结果为准 |
@@ -105,8 +105,9 @@ content.video_url 中，可能还会有 content.last_frame_url。视频签名地
 
 Seedance 支持使用 PinduCloud 私域素材库中的图片、视频和音频。上传完成并审核
 为 `Active` 后，从素材列表取得 `asset_id`，在标准 `content` 媒体项的 URL 字段中
-使用 `asset://<AssetId>` 引用素材。`preview_url`（如果返回）仅用于页面预览，
-不用于生成任务输入；`asset_id` 原值不能直接作为 URL。
+使用 `asset://<AssetId>` 引用素材；`asset_id` 原值不能直接作为 URL。
+有效且上游可访问的 `preview_url` 也可以作为普通公网地址输入，本轮已验证 Fast
+首帧生成；但临时地址可能过期，长期复用优先使用 `asset://` 引用。
 
 完整流程、上传接口和示例见[使用 Seedance 私域素材库](./private-assets)。
 
