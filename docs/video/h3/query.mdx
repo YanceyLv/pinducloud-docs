@@ -87,8 +87,8 @@ curl --request GET \
 | output_seconds | 上游输出计费秒数，不保证等于媒体文件的小数时长 |
 | input_image_count | 计费用输入图片总数 |
 
-实测 5.166667 秒的再生成产物返回 `duration: 6` 和 `output_seconds: 6`，本站
-按后者结算。详情见[小数时长与结算](./regeneration#小数时长与结算)。
+视频费用使用 `usage.output_seconds` 作为输出计费秒数。不要用播放器显示的
+文件时长代替该字段，详情见[小数时长与结算](./regeneration#小数时长与结算)。
 
 Context-IR 任务的 usage：
 

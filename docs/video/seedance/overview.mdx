@@ -31,7 +31,7 @@ https://video.pinducloud.com.cn
 | --- | --- | --- |
 | 文生视频 | 文本项 | 已开放的对应模型 |
 | 首帧图生视频 | 文本项 + 一张首帧图 | 由对应模型的输入能力决定 |
-| 首尾帧图生视频 | 文本项 + `first_frame` 和 `last_frame` | 当前 2.0 标准版已验证 |
+| 首尾帧图生视频 | 文本项 + `first_frame` 和 `last_frame` | 当前 2.0 标准版支持 |
 | 多模态参考生成 | 文本项 + 参考图/视频/音频 | 当前 2.0 三个模型的 `content` 入口 |
 | 有声视频 | `generate_audio: true` | 当前 2.0 三个模型 |
 | Draft 样片 | `draft: true` | 当前文档保留 1.5 pro 流程；2.0 入口拒绝 |
@@ -106,8 +106,8 @@ content.video_url 中，可能还会有 content.last_frame_url。视频签名地
 Seedance 支持使用 PinduCloud 私域素材库中的图片、视频和音频。上传完成并审核
 为 `Active` 后，从素材列表取得 `asset_id`，在标准 `content` 媒体项的 URL 字段中
 使用 `asset://<AssetId>` 引用素材；`asset_id` 原值不能直接作为 URL。
-有效且上游可访问的 `preview_url` 也可以作为普通公网地址输入，本轮已验证 Fast
-首帧生成；但临时地址可能过期，长期复用优先使用 `asset://` 引用。
+有效且上游可访问的 `preview_url` 也可以作为普通公网地址输入，媒体仍须符合
+所选模型的要求；临时地址可能过期，长期复用优先使用 `asset://` 引用。
 
 完整流程、上传接口和示例见[使用 Seedance 私域素材库](./private-assets)。
 
