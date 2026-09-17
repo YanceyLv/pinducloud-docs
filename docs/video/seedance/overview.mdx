@@ -104,8 +104,9 @@ content.video_url 中，可能还会有 content.last_frame_url。视频签名地
 ## 私域素材库
 
 Seedance 支持使用 PinduCloud 私域素材库中的图片、视频和音频。上传完成并审核
-为 `Active` 后，从素材列表取得临时 `preview_url`，将它放入标准 `content` 媒体项
-的 URL字段，再提交生成任务。`asset_id` 只用于素材管理，不能直接作为媒体输入。
+为 `Active` 后，从素材列表取得 `asset_id`，在标准 `content` 媒体项的 URL 字段中
+使用 `asset://<AssetId>` 引用素材。`preview_url`（如果返回）仅用于页面预览，
+不用于生成任务输入；`asset_id` 原值不能直接作为 URL。
 
 完整流程、OSS 配置、上传接口和示例见[使用 Seedance 私域素材库](./private-assets)。
 
