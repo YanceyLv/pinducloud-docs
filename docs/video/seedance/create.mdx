@@ -87,7 +87,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 
 媒体 URL 可以是公网地址、符合接口要求的 Base64 data URI，或已登记的素材引用。
 私域素材库素材使用 `asset://<AssetId>` 引用，其中 `<AssetId>` 是素材列表返回的
-`asset_id`。PinduCloud 自定义路由不接受本地文件路径和 multipart 上传。
+`asset_id`。接口不接受本地文件路径和 multipart 上传。
 
 例如，使用私域素材库中的图片作为参考图：
 

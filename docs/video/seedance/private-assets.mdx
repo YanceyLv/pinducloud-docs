@@ -20,27 +20,6 @@ Seedance 素材组。素材审核完成后，生成任务通过 `asset://<AssetI
 输入，也不能替代 `asset://<AssetId>`。
 :::
 
-## 使用前准备
-
-控制台上传本地文件前，管理员需要在 **系统设置 → 运维 → 私域素材 OSS** 中完成
-配置。通过 API 登记外部地址不依赖本地文件上传，但仍需要已经配置可用的
-Seedance 服务来创建素材组和处理素材。
-
-| 配置项 | 要求 |
-| --- | --- |
-| OSS Region | 必填，例如 `cn-hangzhou`；只能使用小写字母、数字和连字符 |
-| OSS Endpoint | 可选；留空时按 Region 使用公共地址，填写时必须是 HTTPS 源站地址，不能带路径、查询参数或凭证 |
-| OSS Bucket | 必填；使用私有 Bucket |
-| Object Prefix | 可选，默认 `private-assets/`；使用 `/` 分隔路径 |
-| AccessKey ID | 必填，建议使用专用 RAM 用户 |
-| AccessKey Secret | 首次配置必填；已有配置时留空表示保留原值 |
-
-用于文件上传的 RAM 用户至少需要 `PutObject`、`GetObject` 和 `DeleteObject` 权限。
-AccessKey 只填写在管理员设置中，不要放入浏览器代码、生成请求或 API 文档。
-
-Region、Endpoint 或 Bucket 发生变化会改变已保存文件的存储位置。仍有 OSS 文件时，
-系统会拒绝修改这三项；需要更换存储位置时，应先删除对应素材。
-
 ## 鉴权和响应
 
 素材管理接口属于用户资源管理接口，使用当前用户的用户访问令牌：
@@ -201,7 +180,7 @@ curl --request DELETE "$BASE_URL/api/user/seedance/asset-groups/12" \
   --header "Authorization: Bearer $API_KEY"
 ~~~
 
-删除素材组会同时删除组内素材记录和通过文件上传保存的 OSS 文件。删除过程中组和素材会进入
+删除素材组会同时删除组内素材记录。删除过程中组和素材会进入
 `Deleting` 状态；如果清理失败，记录会保留，待服务恢复后可再次调用同一路径重试。
 确认素材组从列表消失后，才表示删除流程完成。删除前请确认没有任务仍在引用其中
 的素材。
@@ -237,7 +216,7 @@ curl --request POST "$BASE_URL/api/user/seedance/assets/upload" \
     "name": "character.png",
     "asset_type": "Image",
     "status": "Processing",
-    "preview_url": "https://oss-cn-hangzhou.aliyuncs.com/private-assets/users/1/2026/09/16/xxxxxxxx.png?签名参数"
+    "preview_url": "https://media.example.com/private-assets/xxxxxxxx.png?signature"
   }
 }
 ~~~
@@ -272,9 +251,9 @@ curl --request POST "$BASE_URL/api/user/seedance/assets" \
 | `asset_type` | 是 | `Image`、`Video` 或 `Audio` |
 | `name` | 否 | 素材名称，最多 64 个字符 |
 
-成功返回 HTTP `202`，状态从 `Processing` 开始。此接口只登记外部地址，不会把
-文件写入本地 OSS；预览时可能直接使用该地址。外部地址必须能被服务端访问，并且
-仍需满足生成任务对媒体格式和大小的要求。
+成功返回 HTTP `202`，状态从 `Processing` 开始。此接口保留外部地址作为素材来源；
+预览时可能直接使用该地址。外部地址必须能被服务端访问，并且仍需满足生成任务对媒体
+格式和大小的要求。
 
 ### 列出素材
 
@@ -312,7 +291,7 @@ curl --get "$BASE_URL/api/user/seedance/assets" \
       "name": "character.png",
       "asset_type": "Image",
       "status": "Active",
-      "preview_url": "https://oss-cn-hangzhou.aliyuncs.com/private-assets/users/1/2026/09/16/xxxxxxxx.png?签名参数"
+      "preview_url": "https://media.example.com/private-assets/xxxxxxxx.png?signature"
     }
   ],
   "total": 1,
@@ -327,9 +306,9 @@ curl --get "$BASE_URL/api/user/seedance/assets" \
 `status` 筛选影响；即使当前 `status` 只请求 `Active`，其他待处理素材也会使它为
 `true`。
 
-`preview_url` 的行为与素材来源有关：OSS 文件每次列表请求都会生成一小时有效的
-临时预览地址；外部地址素材使用登记时的地址。预览地址可能为空、过期或因存储
-配置暂时不可用而无法生成，这不改变 `asset_id` 和素材审核状态，也不改变任务引用
+`preview_url` 的行为与素材来源有关：文件素材每次列表请求都会生成一小时有效的
+临时预览地址；外部地址素材使用登记时的地址。预览地址可能为空、过期或暂时不可用，
+但这不改变 `asset_id` 和素材审核状态，也不改变任务引用
 格式。生成任务始终使用 `asset://<AssetId>`。
 
 ### 立即刷新单个素材状态
@@ -340,7 +319,7 @@ curl --request POST "$BASE_URL/api/user/seedance/assets/101/refresh" \
 ~~~
 
 路径中的 `101` 是列表响应中的数字 `id`，不是 `asset_id`。接口会立即检查该素材的
-当前状态并返回完整素材记录；`preview_url` 如果是 OSS 文件，也会重新生成。刷新
+当前状态并返回完整素材记录；文件素材的 `preview_url` 也会重新生成。刷新
 不会改变素材引用格式，也不会删除素材文件。
 
 ### 删除单个素材
@@ -441,7 +420,7 @@ HTTP `202` 只表示文件已经进入处理流程。后台会继续同步状态
 
 ### preview_url 为空或失效
 
-`preview_url` 只负责页面预览，不负责任务引用。OSS 预览地址是短期签名地址，列表
+`preview_url` 只负责页面预览，不负责任务引用。文件素材的预览地址是短期签名地址，列表
 接口会按需重新生成；预览失败时可以重新列出素材或刷新单个素材。无论预览地址是否
 可用，任务都应使用 `asset://<AssetId>`。
 
