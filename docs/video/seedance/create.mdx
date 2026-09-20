@@ -89,6 +89,9 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 私域素材库素材使用 `asset://<AssetId>` 引用，其中 `<AssetId>` 是素材列表返回的
 `asset_id`。接口不接受本地文件路径和 multipart 上传。
 
+本地文件请先使用 API Key 调用 `/v1/seedance/assets/upload` 上传。同一用户的
+有效 API Key 共享素材库，完整参数及流程见[私域素材库](./private-assets)。
+
 例如，使用私域素材库中的图片作为参考图：
 
 ~~~json

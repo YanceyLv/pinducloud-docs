@@ -8,8 +8,7 @@ title: 使用 Seedance 私域素材库
 PinduCloud 私域素材库用于保存可重复使用的图片、视频和音频，并将素材归入
 Seedance 素材组。素材审核完成后，生成任务通过 `asset://<AssetId>` 引用素材。
 
-:::warning
-素材列表中的 `id`、`group_id` 和 `asset_id` 用途不同：
+**注意：** 素材列表中的 `id`、`group_id` 和 `asset_id` 用途不同：
 
 - `id` 是平台素材记录的数字 ID，只用于素材刷新、删除等管理接口。
 - `group_id` 是素材组 ID，用于素材列表筛选和上传请求。
@@ -18,26 +17,42 @@ Seedance 素材组。素材审核完成后，生成任务通过 `asset://<AssetI
 
 `preview_url`（如果返回）用于预览。有效且上游可访问时，也可以作为普通公网
 媒体 URL 输入；但临时签名地址会过期，不适合替代稳定的 `asset://<AssetId>` 引用。
-:::
 
 ## 鉴权和响应
 
-素材管理接口属于用户资源管理接口，使用当前用户的用户访问令牌：
+程序调用使用与视频生成相同的 API Key，接口前缀为 `/v1/seedance`：
 
 ~~~http
-Authorization: Bearer <PINDUCLOUD_USER_ACCESS_TOKEN>
+Authorization: Bearer <PINDUCLOUD_API_KEY>
 ~~~
 
-用户访问令牌可以是登录会话使用的访问令牌，或在账户设置中生成的个人访问令牌。用于
-调用视频模型的 `sk-...` 令牌不属于用户访问令牌，不能用于这些 `/api/user/...` 素材
-管理接口；使用错误的令牌会返回 HTTP `401` 和 `AUTH_UNAUTHORIZED`。
-
-下面示例使用环境变量保存地址和 Token：
+下面示例适用于 Bash，使用环境变量保存地址和 API Key：
 
 ~~~bash
 export BASE_URL="https://video.pinducloud.com.cn"
-export API_KEY="user-access-token"
+export API_KEY="sk-your-api-key"
 ~~~
+
+后台页面仍通过 `/api/user/seedance/...` 使用登录会话访问令牌或个人访问令牌。
+两套入口共享当前用户的素材数据；API Key 应调用本文的 `/v1/seedance/...`，
+不能直接代替后台访问令牌调用 `/api/user/...`。
+
+**版本要求：** 服务端需部署支持 `/v1/seedance` 的版本。旧版本只有后台素材管理
+接口，升级前不能仅替换路径或凭证就使用本文的 API Key 接口。
+
+### 用户级共享与权限
+
+- 同一 PinduCloud 用户的有效 API Key 共享该用户的全部素材组和媒体，包括通过
+  控制台或其他 Key 创建的数据；无需按 Key 重建素材组或重复上传。
+- 不同用户相互隔离。请求中的 `user_id` 不能改变资源归属。
+- 同用户的 Key 可以查询、上传、刷新、改名和删除素材；轮换 Key 不会改变已有
+  素材组和素材的上游绑定。
+- 查询素材不按 Key 的模型列表拆分；创建素材组时检查所选模型和分组的访问权限，
+  生成任务仍单独检查调用 Key 的模型权限及可用渠道。
+- Key 被禁用、删除、过期、额度耗尽，或不符合 IP、用户状态、分组访问限制时，
+  请求会按现有 API Key 认证规则被拒绝；用户的素材不会因此删除。
+- 素材管理本身不扣视频生成额度，生成任务另行计费。所有 Key 共用用户级素材
+  限流，当前为每分钟 60 次，文件上传另受上传限流约束。
 
 成功响应通常包含：
 
@@ -66,13 +81,14 @@ export API_KEY="user-access-token"
 | 状态 | 含义 | 是否可以用于生成 |
 | --- | --- | --- |
 | `Processing`、`Pending` | 素材仍在处理或审核 | 否 |
-| `Active`、`Success`、`Succeeded` | 素材已完成处理 | 是 |
+| `Active`、`Success`、`Succeeded` | 素材接口报告处理完成 | 可尝试生成，仍以上游受理结果为准 |
 | `Failed` | 素材处理或审核失败 | 否 |
 | `Deleting` | 素材或素材组正在删除 | 否 |
 
 服务会在后台同步处理中素材的状态。列表页面在存在待处理素材时会定时重新获取
 列表；也可以调用单个素材的刷新接口立即检查一次。客户端不应把上传接口返回
-`202` 误认为素材已经可以生成。
+`202` 误认为素材已经可以生成。处理完成也不代表生成账号已完成素材同步或具备全部
+使用权限，生成接口仍可能返回上游同步错误。
 
 ## 控制台上传本地文件
 
@@ -109,16 +125,18 @@ export API_KEY="user-access-token"
 
 | 方法 | 路径 | 用途 |
 | --- | --- | --- |
-| GET | `/api/user/seedance/asset-groups` | 列出当前用户的素材组 |
-| POST | `/api/user/seedance/asset-groups` | 创建素材组 |
-| PUT | `/api/user/seedance/asset-groups/:id` | 修改素材组名称 |
-| DELETE | `/api/user/seedance/asset-groups/:id` | 删除素材组及其素材 |
-| GET | `/api/user/seedance/assets` | 分页列出素材 |
-| POST | `/api/user/seedance/assets/upload` | 上传本地文件 |
-| POST | `/api/user/seedance/assets` | 登记外部媒体地址 |
-| POST | `/api/user/seedance/assets/:id/refresh` | 立即刷新单个素材状态 |
-| DELETE | `/api/user/seedance/assets/:id` | 删除单个素材 |
-| POST | `/api/user/seedance/assets/batch-delete` | 批量删除素材 |
+| GET | `/v1/seedance/asset-groups` | 列出当前用户的素材组 |
+| GET | `/v1/seedance/asset-groups/:id` | 查询单个素材组详情 |
+| POST | `/v1/seedance/asset-groups` | 创建素材组 |
+| PUT | `/v1/seedance/asset-groups/:id` | 修改素材组名称 |
+| DELETE | `/v1/seedance/asset-groups/:id` | 删除素材组及其素材 |
+| GET | `/v1/seedance/assets` | 分页列出素材 |
+| GET | `/v1/seedance/assets/:id` | 查询单个素材详情 |
+| POST | `/v1/seedance/assets/upload` | 上传本地文件 |
+| POST | `/v1/seedance/assets` | 登记外部媒体地址 |
+| POST | `/v1/seedance/assets/:id/refresh` | 立即刷新单个素材状态 |
+| DELETE | `/v1/seedance/assets/:id` | 删除单个素材 |
+| POST | `/v1/seedance/assets/batch-delete` | 批量删除素材 |
 
 素材组修改、删除以及素材刷新、删除路径中的 `:id` 都是响应中的数字 `id`；
 素材列表筛选和上传字段中的 `group_id` 使用素材组响应里的字符串 `group_id`。
@@ -126,11 +144,28 @@ export API_KEY="user-access-token"
 ### 列出素材组
 
 ~~~bash
-curl --request GET "$BASE_URL/api/user/seedance/asset-groups" \
+curl --request GET "$BASE_URL/v1/seedance/asset-groups" \
   --header "Authorization: Bearer $API_KEY"
 ~~~
 
 响应中的 `group_id` 用于后续列出素材和上传文件：
+
+支持 `search`（名称或组 ID 模糊搜索）、`group_id` / `group_ids`、`ids`（本地数字 ID）、
+`status` / `statuses`（`active`、`deleting`、`all`）、`created_after`、`created_before`、
+`sort_by` 和 `sort_order`。时间、排序和批量参数的规则与下面的素材列表一致。
+
+不传分页参数时保留全部组的 `data` 数组；显式传入 `p` 或 `page_size` 后启用分页，
+响应保留 `data` 并增加 `total`、`page`、`page_size`。例如：
+
+~~~bash
+curl --get "$BASE_URL/v1/seedance/asset-groups" \
+  --header "Authorization: Bearer $API_KEY" \
+  --data-urlencode "search=product" \
+  --data-urlencode "p=1" \
+  --data-urlencode "page_size=24" \
+  --data-urlencode "sort_by=created_at" \
+  --data-urlencode "sort_order=desc"
+~~~
 
 ~~~json
 {
@@ -152,11 +187,19 @@ curl --request GET "$BASE_URL/api/user/seedance/asset-groups" \
 素材组名称必填，去除首尾空白后不能为空，最多 64 个字符；同一用户不能创建
 同名素材组，名称比较不区分大小写。
 
+通过 API Key 创建时还必须提供 `model`（最多 191 个字符），例如
+`doubao-seedance-2-0-fast-260128`。平台会在该 Key 的可用分组中选择支持该模型的
+启用 Doubao 渠道；模型不在 Key 的允许范围或没有可用渠道时，创建失败。
+支持管理员配置的模型别名。
+
+`model` 仅决定建组时选用的上游渠道，不是素材的独占模型标签。已有组继续使用
+原有上游绑定，修改名称不会重新绑定模型。
+
 ~~~bash
-curl --request POST "$BASE_URL/api/user/seedance/asset-groups" \
+curl --request POST "$BASE_URL/v1/seedance/asset-groups" \
   --header "Authorization: Bearer $API_KEY" \
   --header "Content-Type: application/json" \
-  --data '{"name":"product-assets"}'
+  --data '{"name":"product-assets","model":"doubao-seedance-2-0-fast-260128"}'
 ~~~
 
 创建成功后保存返回的 `id` 和 `group_id`。后续请求使用 `group_id` 选择该组，
@@ -165,7 +208,7 @@ curl --request POST "$BASE_URL/api/user/seedance/asset-groups" \
 ### 修改素材组名称
 
 ~~~bash
-curl --request PUT "$BASE_URL/api/user/seedance/asset-groups/12" \
+curl --request PUT "$BASE_URL/v1/seedance/asset-groups/12" \
   --header "Authorization: Bearer $API_KEY" \
   --header "Content-Type: application/json" \
   --data '{"name":"product-assets-v2"}'
@@ -176,7 +219,7 @@ curl --request PUT "$BASE_URL/api/user/seedance/asset-groups/12" \
 ### 删除素材组
 
 ~~~bash
-curl --request DELETE "$BASE_URL/api/user/seedance/asset-groups/12" \
+curl --request DELETE "$BASE_URL/v1/seedance/asset-groups/12" \
   --header "Authorization: Bearer $API_KEY"
 ~~~
 
@@ -188,7 +231,7 @@ curl --request DELETE "$BASE_URL/api/user/seedance/asset-groups/12" \
 ### 上传本地文件
 
 ~~~bash
-curl --request POST "$BASE_URL/api/user/seedance/assets/upload" \
+curl --request POST "$BASE_URL/v1/seedance/assets/upload" \
   --header "Authorization: Bearer $API_KEY" \
   --form "group_id=asset-group-xxxxxxxx" \
   --form "file=@./character.png" \
@@ -231,7 +274,7 @@ curl --request POST "$BASE_URL/api/user/seedance/assets/upload" \
 `/upload` 接口，不需要在页面中手动输入地址。
 
 ~~~bash
-curl --request POST "$BASE_URL/api/user/seedance/assets" \
+curl --request POST "$BASE_URL/v1/seedance/assets" \
   --header "Authorization: Bearer $API_KEY" \
   --header "Content-Type: application/json" \
   --data '{
@@ -258,7 +301,7 @@ curl --request POST "$BASE_URL/api/user/seedance/assets" \
 ### 列出素材
 
 ~~~bash
-curl --get "$BASE_URL/api/user/seedance/assets" \
+curl --get "$BASE_URL/v1/seedance/assets" \
   --header "Authorization: Bearer $API_KEY" \
   --data-urlencode "group_id=asset-group-xxxxxxxx" \
   --data-urlencode "p=1" \
@@ -277,8 +320,43 @@ curl --get "$BASE_URL/api/user/seedance/assets" \
 | `search` | 否 | 空 | 不区分大小写搜索名称或 `asset_id`，最多 128 个字符 |
 | `asset_type` | 否 | `all` | `all`、`image`、`video`、`audio` |
 | `status` | 否 | `all` | `all`、`processing`、`deleting`、`active`、`failed` |
+| `group_ids` | 否 | 空 | 多个字符串组 ID，与 `group_id` 互斥 |
+| `asset_id` / `asset_ids` | 否 | 空 | 单个 / 多个 `asset_id` 精确匹配，两者互斥 |
+| `ids` | 否 | 空 | 多个本地数字素材 ID |
+| `statuses` | 否 | 空 | 多个状态，与 `status` 互斥 |
+| `asset_types` | 否 | 空 | 多个类型，与 `asset_type` 互斥 |
+| `created_after` | 否 | 空 | 本地创建时间大于等于该时间，RFC3339 |
+| `created_before` | 否 | 空 | 本地创建时间严格小于该时间，RFC3339 |
+| `sort_by` | 否 | `id` | `id`、`created_at`、`updated_at`、`name` |
+| `sort_order` | 否 | `desc` | `asc` 或 `desc` |
 
-列表按素材记录 ID 从新到旧返回：
+批量值可以用逗号分隔或重复参数，如 `statuses=active,processing`。每个批量参数
+最多 100 个元素（去重前），自动去重，但不接受空元素。同字段多值取并集，不同
+筛选条件取交集；`all` 不可与其他状态或类型混用。ID 最多 128 个字符。
+状态、类型和排序方向不区分大小写；搜索中的 `%`、`_`、`#` 按普通文字匹配。
+
+时间示例：`2026-09-20T00:00:00Z`，也可使用带时区偏移的 RFC3339 时间。
+时间范围为左闭右开，开始时间必须早于结束时间。创建及更新时间均指本地记录时间。
+默认按本地 ID 倒序；其他排序字段相同时以 ID 同方向排序。页码超出末页时返回末页，
+空结果返回第一页；并发增删期间页码分页不保证快照一致。
+
+非法参数、单复数冲突、非正整数分页参数返回 HTTP 400。`page_size` 超过 100 时
+截断为 100；旧的 `ps`、`size` 分页别名继续支持。
+
+例如查询多个组中已就绪或处理中的图片、视频：
+
+~~~bash
+curl --get "$BASE_URL/v1/seedance/assets" \
+  --header "Authorization: Bearer $API_KEY" \
+  --data-urlencode "group_ids=group-a,group-b" \
+  --data-urlencode "statuses=active,processing" \
+  --data-urlencode "asset_types=image,video" \
+  --data-urlencode "sort_by=created_at" \
+  --data-urlencode "sort_order=desc" \
+  --data-urlencode "page_size=24"
+~~~
+
+响应示例：
 
 ~~~json
 {
@@ -301,10 +379,14 @@ curl --get "$BASE_URL/api/user/seedance/assets" \
 }
 ~~~
 
-`has_pending` 表示当前用户（或 `group_id` 指定的素材组）是否仍有 `Processing`、
-`Pending` 或 `Deleting` 素材。它不是当前页的数量，也不受 `search`、`asset_type` 或
-`status` 筛选影响；即使当前 `status` 只请求 `Active`，其他待处理素材也会使它为
+`has_pending` 表示当前用户（或 `group_id` / `group_ids` 指定的素材组）是否仍有 `Processing`、
+`Pending` 或 `Deleting` 素材。它不是当前页的数量，不受 ID、名称、时间、类型、状态或
+分页筛选影响；即使当前 `status` 只请求 `Active`，同一组范围内的待处理素材也会使它为
 `true`。
+
+通常每 5 秒查询一次列表即可，`has_pending: false` 后停止轮询。后台负责同步上游
+状态，不需要为每个素材反复调用刷新接口。网络超时不等于创建失败，上传或生成
+请求不要盲目重发，应先查询已创建的素材或任务，避免重复创建。
 
 `preview_url` 的行为与素材来源有关：文件素材每次列表请求都会生成一小时有效的
 临时预览地址；外部地址素材使用登记时的地址。预览地址可能为空、过期或暂时不可用，
@@ -312,10 +394,28 @@ curl --get "$BASE_URL/api/user/seedance/assets" \
 格式。重复使用素材时，优先采用 `asset://<AssetId>`；若直接提交公网 URL，则
 按普通外部媒体处理，需要保证上游读取时仍可访问。
 
+### 查询单个素材或素材组
+
+~~~bash
+curl "$BASE_URL/v1/seedance/assets/101" \
+  --header "Authorization: Bearer $API_KEY"
+
+curl "$BASE_URL/v1/seedance/asset-groups/12" \
+  --header "Authorization: Bearer $API_KEY"
+~~~
+
+路径使用本地数字 `id`，成功返回 `success/message/data`，其中 `data` 为单个对象。
+不存在或不属于当前用户的记录统一返回 HTTP 404；非法 ID 返回 HTTP 400。
+这些查询读取本地状态，不隐式请求上游。素材详情会生成临时 `preview_url`，签名
+暂时失败时仍返回记录，预览地址为空或省略；需要立即同步上游时使用下面的刷新接口。
+
+这些筛选和详情能力是网关提供的扩展。当前上游为书言，使用其 AIGC 素材组接口，
+不包含火山直连的 H5 真人认证接口或认证素材组流程。
+
 ### 立即刷新单个素材状态
 
 ~~~bash
-curl --request POST "$BASE_URL/api/user/seedance/assets/101/refresh" \
+curl --request POST "$BASE_URL/v1/seedance/assets/101/refresh" \
   --header "Authorization: Bearer $API_KEY"
 ~~~
 
@@ -326,7 +426,7 @@ curl --request POST "$BASE_URL/api/user/seedance/assets/101/refresh" \
 ### 删除单个素材
 
 ~~~bash
-curl --request DELETE "$BASE_URL/api/user/seedance/assets/101" \
+curl --request DELETE "$BASE_URL/v1/seedance/assets/101" \
   --header "Authorization: Bearer $API_KEY"
 ~~~
 
@@ -339,7 +439,7 @@ HTTP `202` 并重新排队清理；请重新列出素材，确认记录消失后
 一次最多提交 100 个数字 `id`，重复 ID 会自动去重：
 
 ~~~bash
-curl --request POST "$BASE_URL/api/user/seedance/assets/batch-delete" \
+curl --request POST "$BASE_URL/v1/seedance/assets/batch-delete" \
   --header "Authorization: Bearer $API_KEY" \
   --header "Content-Type: application/json" \
   --data '{"ids":[101,102,103]}'
@@ -416,10 +516,27 @@ Seedance 视频生成任务](./create)。
 
 ## 常见问题
 
+### 同一用户换了一把 API Key，还能查看已有素材吗
+
+可以。素材按 PinduCloud 用户归属，而非按 API Key 归属。同一用户的另一把有效
+Key 调用列表接口会得到同一套素材组和媒体，包含控制台已上传的数据。
+
+### Active 后仍提示“素材尚未同步到可用账号”
+
+`Active` 是素材查询接口报告的处理状态，不保证生成接口一定受理。若生成返回
+HTTP `409` 和“素材尚未同步到可用账号，请稍后重试”，保留素材 ID、所用模型和
+错误中的 request ID，联系平台确认上游同步情况；不要把该响应视为已创建视频任务。
+
+同一上游账号下，不同 Seedance 2.0 模型分组的 API Key 可以共享素材库，不同上游
+账号相互隔离。因此不能仅凭标准版/Fast 模型不同、平台渠道编号不同或 Key 不同就
+断言素材不可共享，也不能仅凭这条同步错误断言是明星或真人审核不通过。
+
+平台保持 `asset://` 引用，不会自动替换成普通 OSS URL。
+
 ### 上传接口返回成功但状态仍是 Processing
 
 HTTP `202` 只表示文件已经进入处理流程。后台会继续同步状态；重新列出素材，或
-调用 `/api/user/seedance/assets/:id/refresh` 立即检查一次。只有状态为 `Active`、
+调用 `/v1/seedance/assets/:id/refresh` 立即检查一次。只有状态为 `Active`、
 `Success` 或 `Succeeded` 时才能提交生成任务。
 
 ### preview_url 为空或失效

@@ -103,6 +103,10 @@ content.video_url 中，可能还会有 content.last_frame_url。视频签名地
 
 ## 私域素材库
 
+程序可使用视频生成的 API Key 调用 `/v1/seedance` 素材管理接口。同一用户的
+有效 Key 共享全部素材组和媒体，包括控制台已上传的数据；创建素材组时通过
+`model` 选择有权限使用的 Doubao 渠道。
+
 Seedance 支持使用 PinduCloud 私域素材库中的图片、视频和音频。上传完成并审核
 为 `Active` 后，从素材列表取得 `asset_id`，在标准 `content` 媒体项的 URL 字段中
 使用 `asset://<AssetId>` 引用素材；`asset_id` 原值不能直接作为 URL。
@@ -110,6 +114,9 @@ Seedance 支持使用 PinduCloud 私域素材库中的图片、视频和音频�
 所选模型的要求；临时地址可能过期，长期复用优先使用 `asset://` 引用。
 
 完整流程、上传接口和示例见[使用 Seedance 私域素材库](./private-assets)。
+
+`Active` 表示素材接口报告处理完成，生成仍以上游受理结果为准；若返回素材同步
+错误，请保留素材 ID 和 request ID 排查，不能仅凭模型或渠道编号不同判断账号隔离。
 
 ## 相关资料
 
