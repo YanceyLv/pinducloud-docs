@@ -5,12 +5,12 @@ title: 视频生成接口
 
 # 视频生成接口
 
-PinduCloud 提供两组面向视频任务的自定义接口：豆包 Seedance 和
-MiniMax-H3。两组接口都使用异步任务模型，创建接口返回任务 ID，结果通过查询
-接口取得。请求体分别按照对应接口的字段组织，并使用 PinduCloud 用户 API Token。
+PinduCloud 提供豆包 Seedance、MiniMax-H3、Vidu Q3、Kling V3、Kling V3 Omni、
+Wan3.0 和 Wan3.0 Prime 视频接口。不同模型的请求字段、任务状态和结果获取方式不同，
+请按对应页面的接口说明调用。所有示例均使用 PinduCloud API Key。
 
-文档中写明“本站拒绝”的参数，表示 PinduCloud 会在任务提交前返回 400；没有写入
-字段表的参数不属于本站公开接口契约，不能假定可以使用。
+标记为“本站拒绝”的参数会在任务提交前被 PinduCloud 拒绝。未列出的参数不属于本站
+公开接口约定，不能据此认定受支持。
 
 ## 服务地址与鉴权
 
@@ -20,7 +20,7 @@ MiniMax-H3。两组接口都使用异步任务模型，创建接口返回任务 
 https://video.pinducloud.com.cn
 ~~~
 
-所有请求使用 PinduCloud 用户 API Token：
+所有请求使用 PinduCloud API Key：
 
 ~~~bash
 export BASE_URL="https://video.pinducloud.com.cn"
@@ -30,7 +30,7 @@ export API_KEY="sk-your-pinducloud-token"
 请求头：
 
 ~~~http
-Authorization: Bearer <PINDUCLOUD_API_TOKEN>
+Authorization: Bearer <PINDUCLOUD_API_KEY>
 Content-Type: application/json
 ~~~
 
@@ -52,34 +52,76 @@ Content-Type: application/json
 | H3 查询任务 | GET | /hailuo/v2/query/video_generation/:task_id |
 | H3 查询列表 | GET | /hailuo/v2/query/video_generation |
 | H3 取消或删除 | DELETE | /hailuo/v2/video_generation/:task_id |
+| Vidu 文生视频 | POST | /vidu/ent/v2/text2video |
+| Vidu 图生视频 | POST | /vidu/ent/v2/img2video |
+| Vidu 参考生视频 | POST | /vidu/ent/v2/reference2video |
+| Vidu 首尾帧 | POST | /vidu/ent/v2/start-end2video |
+| Vidu 智能多帧 | POST | /vidu/ent/v2/multiframe |
+| Vidu 场景模板 | POST | /vidu/ent/v2/template |
+| Vidu 模板成片 | POST | /vidu/ent/v2/template-story |
+| Vidu 查询列表 | GET | /vidu/ent/v2/tasks |
+| Vidu 查询任务 | GET | /v1/videos/:task_id |
+| Vidu 下载视频 | GET | /v1/videos/:task_id/content |
+| Kling 新版文生视频 | POST | /kling/text-to-video/:model |
+| Kling 新版图生视频 | POST | /kling/image-to-video/:model |
+| Kling 新版 Omni 生成 | POST | /kling/omni-video/:model |
+| Kling 新版动作控制 | POST | /kling/motion-control/:model |
+| Kling 新版任务列表 | GET | /kling/tasks |
+| Kling 新版单任务查询 | GET | /v1/videos/:task_id |
+| Kling 新版视频下载 | GET | /v1/videos/:task_id/content |
+| Kling 原版文生视频 | POST | /kling/v1/videos/text2video |
+| Kling 原版图生视频 | POST | /kling/v1/videos/image2video |
+| Kling 原版动作控制 | POST | /kling/v1/videos/motion-control |
+| Kling 原版 Omni 视频生成 | POST | /kling/v1/videos/omni-video |
+| Kling 原版多图参考 | POST | /kling/v1/videos/multi-image2video |
+| Kling 原版多元素编辑 | POST | /kling/v1/videos/multi-elements |
+| Kling 原版视频延长 | POST | /kling/v1/videos/video-extend |
+| Kling 原版对口型 | POST | /kling/v1/videos/advanced-lip-sync |
+| Kling 原版数字人 | POST | /kling/v1/videos/avatar/image2video |
+| Kling 原版音频与音色接口 | POST | /kling/v1/audio/*、/kling/v1/general/custom-voices |
+| Kling 原版任务查询/列表 | GET | `/kling/v1/{task_path}`、`/kling/v1/{task_path}/:task_id` |
+| Kling 原版多元素选择初始化/添加/删除/清空/预览 | POST | `/kling/v1/videos/multi-elements/{init-selection,add-selection,delete-selection,clear-selection,preview-selection}` |
+| Kling 原版人脸识别、图像识别 | POST | /kling/v1/videos/identify-face、/kling/v1/videos/image-recognize |
+| Kling 原版预置音色查询/删除音色 | GET / POST | /kling/v1/general/presets-voices、/kling/v1/general/delete-voices |
+| Kling 原版主体创建、查询、删除与预置主体查询 | POST / GET | /kling/v1/general/advanced-custom-elements、/kling/v1/general/delete-elements、/kling/v1/general/advanced-presets-elements |
+| Kling 原版视频特效 | POST | /kling/v1/videos/effects |
+| Kling 下载视频 | GET | /v1/videos/:task_id/content |
+| Wan 文生、图生、参考与编辑 | POST | /ali/api/v1/services/aigc/video-generation/video-synthesis |
+| Wan 首尾帧、动作迁移与数字人 | POST | /ali/api/v1/services/aigc/image2video/video-synthesis |
+| Wan 人脸检测 | POST | /ali/api/v1/services/aigc/image2video/face-detect |
+| Wan 查询任务 | GET | /ali/api/v1/tasks/:task_id |
+| Wan 下载视频 | GET | /v1/videos/:task_id/content |
 
-请求路径中的 `/doubao` 和 `/hailuo` 是 PinduCloud 的接口前缀。
+请求路径均相对于本页所列的公共服务地址。
 
 Seedance 的素材管理、真人认证与视频生成是不同步骤。完整流程见
 [私域素材库](./seedance/private-assets)和[真人认证与人像素材](./seedance/human-verification)。
 已有 OpenAI 客户端可使用 [Seedance 兼容接口](./seedance/compatible)。
+Vidu 接口说明见 [Vidu 视频生成](./vidu-q3)。
+Kling 新版接口说明见 [Kling 新版视频接口](./kling-new)，原版接口见 [Kling 原版视频接口](./kling)。
+万相接口说明见 [Wan 视频生成](./wan3)。
 
 ## 统一任务流程
 
-1. 调用创建接口并保存响应中的 id 或 task_id。
+1. 调用创建接口并保存响应中的 `id` 或 `task_id`。
 2. 使用同一个公开任务 ID调用对应查询接口。
-3. 轮询到 `succeeded` 后，从响应中的视频 URL 或 Context-IR 文本读取结果。
+3. 按各接口规定的成功状态读取视频 URL 或文本结果。
 4. 在链接有效期内下载或转存视频；签名 URL不作为永久存储地址。
 
-`queued` 和 `running` 表示任务仍在处理，`failed` 表示任务失败，
-`cancelled` 表示任务已取消。刚提交的任务可能还没有完成任务登记，查询时短暂
-只返回任务 ID，稍后重试即可。任务已经创建后发生的失败会出现在查询结果中，
-不会通过创建接口的 2xx 响应判断最终生成成功。
+任务状态字段和取值因接口而异，见对应模型页面。创建接口返回成功只表示任务已受理；
+请使用对应查询接口确认任务完成，再获取视频结果。刚提交的任务可能尚未出现在查询结果中，
+遇到暂时查无记录时稍后重试。
 
-## 两组接口的差异
+## 接口类型
 
-| 项目 | Seedance | MiniMax-H3 |
+| 接口 | 请求形式 | 任务查询方式 |
 | --- | --- | --- |
-| 创建响应字段 | `id` | `task_id` |
-| 查询产物 | `content.video_url` | 视频任务为 `task.content.url` |
-| 输入方式 | `content` 多模态数组 | `content` 多模态数组 |
-| 特有能力 | 以模型能力为准；2.0 支持多模态参考 | 768P/2K、视频再生成、Context-IR |
-| 查询任务范围 | PinduCloud 中创建的 Seedance 任务 | H3 生成、再生成和 Context-IR 任务 |
+| Seedance | 豆包原生任务接口；素材引用使用多模态 `content` | Seedance 任务查询、列表和删除路由 |
+| MiniMax-H3 | Hailuo 视频生成、视频再生成和 Context-IR 接口 | H3 单任务、列表和删除路由 |
+| Vidu | `/vidu/ent/v2` 路由；各任务类型使用独立创建接口 | `/vidu/ent/v2/tasks` 列表及 `/v1/videos/{task_id}` 单任务查询 |
+| Kling 新版 | 操作类型和模型名位于请求路径 | `/kling/tasks` 查询列表，`/v1/videos/{task_id}` 查询单任务 |
+| Kling 原版 | 各视频、音频和素材管理能力使用独立路径；模型名放在请求体中 | 任务型接口各自提供单任务查询和列表路径 |
+| Wan | DashScope 风格的 `model`、`input` 和 `parameters` 请求体 | `/ali/api/v1/tasks/{task_id}` 查询任务 |
 
 ## 相关页面
 

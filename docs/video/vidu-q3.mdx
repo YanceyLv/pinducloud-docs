@@ -1,0 +1,264 @@
+---
+sidebar_position: 1
+title: Vidu 视频生成接口
+---
+
+# Vidu 视频生成接口
+
+本文汇总 Vidu 视频生成、模板、任务查询和视频下载接口。模型是否可用以当前 API Key 的
+`GET /v1/models` 返回结果为准；不同模型支持的任务类型和参数范围不同。
+
+## 服务地址与鉴权
+
+~~~bash
+export BASE_URL="https://video.pinducloud.com.cn"
+export API_KEY="sk-your-api-key"
+export TASK_ID="task-id-from-creation-response"
+~~~
+
+所有接口使用 `Authorization: Bearer $API_KEY`。JSON 请求还需设置 `Content-Type: application/json`。
+图片、视频和音频 URL 必须能从任务处理服务访问。
+
+## 接口总览
+
+| 能力 | 方法与路径 | 说明 |
+| --- | --- | --- |
+| 文生视频 | `POST /vidu/ent/v2/text2video` | 根据提示词生成视频 |
+| 图生视频 | `POST /vidu/ent/v2/img2video` | 使用一张首帧图片 |
+| 参考生视频 | `POST /vidu/ent/v2/reference2video` | 使用参考图片、视频或主体 |
+| 首尾帧 | `POST /vidu/ent/v2/start-end2video` | 在首帧与尾帧之间生成过渡 |
+| 智能多帧 | `POST /vidu/ent/v2/multiframe` | 多个关键帧组成视频，仅支持 Q2 Pro/Turbo |
+| 场景特效模板 | `POST /vidu/ent/v2/template` | 按场景模板生成视频 |
+| 模板成片 | `POST /vidu/ent/v2/template-story` | 按故事模板生成视频 |
+| 查询任务与列表 | `GET /vidu/ent/v2/tasks` | 按任务 ID 查询或筛选任务 |
+| 通用任务查询 | `GET /v1/videos/{task_id}` | 查询单个视频任务状态 |
+| 下载视频 | `GET /v1/videos/{task_id}/content` | 返回视频内容 |
+
+## 模型与能力
+
+| 模型系列 | 文生视频 | 图生视频 | 参考生视频 | 首尾帧 | 多帧/模板 |
+| --- | --- | --- | --- | --- | --- |
+| `viduq3-pro` | 是 | 是 | 当前渠道不支持 | 是 | 否 |
+| `viduq3-turbo` | 是 | 是 | 是 | 是 | 否 |
+| `viduq3-pro-fast` | 依上游模型能力 | 是 | 依上游模型能力 | 依上游模型能力 | 否 |
+| `viduq3-mix` | 依上游模型能力 | 依上游模型能力 | 是 | 依上游模型能力 | 否 |
+| `viduq3` | 依模型及渠道能力 | 依模型及渠道能力 | 依模型及渠道能力 | 依模型及渠道能力 | 否 |
+| `viduq2-pro`、`viduq2-turbo` | 是 | 是 | 是 | 是 | 多帧支持；模板任务使用 Q2 路由 |
+| `viduq2`、`viduq2-pro-fast` | 是 | 是 | 是 | 是 | 模板任务使用 Q2 路由 |
+| `viduq1`、`viduq1-classic`、`vidu2.0`、`vidu1.5` | 依模型限制 | 是 | 依模型限制 | 依模型限制 | 依上游能力 |
+
+模型开通情况及每个任务类型的支持范围会随渠道而异。`viduq3-pro` 调用参考生视频路径时，当前上游渠道会返回
+模型不支持错误；该模型的文本、图生和首尾帧路径可用。
+
+## 常用参数
+
+| 参数 | 说明 |
+| --- | --- |
+| `model` | 必填。模型名；模板接口可省略，省略时使用 Q2 默认模型 |
+| `prompt` | 文本提示词，通常不超过 5000 个字符；模板类接口有各自规则 |
+| `duration` | 输出时长，单位秒。Q3 通常为 1–16 秒，Q2 通常为 1–10 秒；Q1 和 Vidu 2.0 有固定档位 |
+| `resolution` | 分辨率。支持范围按模型而异；Q3 Pro 当前为 `720p`/`1080p`，Q3 Turbo 为 `540p`/`720p`/`1080p` |
+| `aspect_ratio` | 宽高比；常见值为 `16:9`、`9:16`、`1:1`，Q3/Q2 还支持 `3:4`、`4:3` |
+| `seed` | 随机种子；省略或设为 `0` 时由系统随机生成 |
+| `audio` | 是否生成带语音和音效的视频；Q3 支持该选项，默认开启 |
+| `audio_type` | 音频类型：`all`、`speech_only`、`sound_effect_only`。只对支持音频拆分的旧型号有效 |
+| `voice_id` | 可选音色 ID；Q3 系列不使用该参数 |
+| `bgm` | 是否添加背景音乐；Q3 不支持该选项 |
+| `off_peak` | 是否使用错峰模式；支持范围依模型而异 |
+| `is_rec` | 是否使用系统推荐提示词；开启后会采用推荐提示词生成 |
+| `movement_amplitude` | 运动幅度：`auto`、`small`、`medium`、`large`；Q2/Q3 不使用该参数 |
+| `watermark` | 是否添加水印 |
+| `wm_position`、`wm_url` | 水印位置和自定义水印图片地址 |
+| `payload`、`meta_data` | 透传数据和元数据字符串 |
+| `callback_url` | 可选回调地址；仅在对应任务接口和上游支持时生效 |
+
+## 创建任务
+
+### 文生视频
+
+~~~bash
+curl --request POST "$BASE_URL/vidu/ent/v2/text2video" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "model": "viduq3-pro",
+    "prompt": "A red paper kite rises slowly above a quiet green field.",
+    "duration": 1,
+    "resolution": "720p"
+  }'
+~~~
+
+### 图生视频
+
+`images` 只能包含一张首帧图片。图片支持 HTTP(S) URL 或带 MIME 前缀的 Base64；图片不超过 50 MB，
+请求体不超过 20 MB，并须符合对应模型的格式、尺寸和宽高比限制。
+
+~~~bash
+curl --request POST "$BASE_URL/vidu/ent/v2/img2video" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "model": "viduq3-pro",
+    "images": ["https://example.com/first-frame.jpg"],
+    "prompt": "The camera slowly moves closer to the subject.",
+    "duration": 1,
+    "resolution": "720p"
+  }'
+~~~
+
+### 参考生视频
+
+可通过 `images`、`videos` 或 `subjects` 提供参考素材；至少提供一种。当前渠道的 Q3 参考图示例使用 Turbo：
+
+~~~bash
+curl --request POST "$BASE_URL/vidu/ent/v2/reference2video" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "model": "viduq3-turbo",
+    "images": ["https://example.com/reference.jpg"],
+    "prompt": "Keep the subject consistent while walking through the scene.",
+    "duration": 1,
+    "resolution": "540p"
+  }'
+~~~
+
+需要按名称在提示词中引用的主体可放入 `subjects`。每项包含必填 `name`，并可附加 `images`、`videos`、`voice_id`
+或已有主体的 `server_id`：
+
+| 字段 | 说明 |
+| --- | --- |
+| `auto_subjects` | 是否启用智能主体库，默认 `false` |
+| `subjects[].name` | 主体名称，在提示词中使用 `@name` 引用 |
+| `subjects[].images` | 主体图片 URL 或带 MIME 前缀的 Base64，每个主体最多 3 张 |
+| `subjects[].videos` | 主体视频；仅 `viduq2-pro` 支持，每个主体最多 1 段 5 秒视频 |
+| `subjects[].voice_id` | 可选音色 ID；Q3 参考生任务不使用此字段 |
+| `subjects[].server_id` | 引用已有主体时必填；当前插件未提供主体创建或管理路由 |
+
+主体图片支持 PNG、JPEG、JPG、WEBP。新建图片主体应提供图片；视频主体仅用于 `viduq2-pro`。Q3、除 `viduq2-pro` 外的 Q2、Q1 和 Vidu 2.0
+最多支持 7 个图片或文本主体；`viduq2-pro` 最多支持 4 个图片/文本主体和 2 个视频主体。
+
+~~~bash
+curl --request POST "$BASE_URL/vidu/ent/v2/reference2video" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "model": "viduq2-pro",
+    "subjects": [
+      {"name": "guide", "images": ["https://example.com/guide.jpg"]}
+    ],
+    "prompt": "@guide walks through a garden.",
+    "duration": 5
+  }'
+~~~
+
+### 首尾帧
+
+`images` 按顺序传入首帧和尾帧，必须正好两张。Q3 Pro 与 Turbo 均可使用此路径。
+两张图片分辨率宽高比需在 `0.8` 到 `1.25` 之间；支持 PNG、JPEG、JPG、WEBP，单张不超过 50 MB，
+请求体不超过 20 MB。Base64 图片需包含 MIME 前缀。
+
+~~~bash
+curl --request POST "$BASE_URL/vidu/ent/v2/start-end2video" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "model": "viduq3-pro",
+    "images": [
+      "https://example.com/first-frame.jpg",
+      "https://example.com/last-frame.jpg"
+    ],
+    "prompt": "Move smoothly from the first composition to the second.",
+    "duration": 1,
+    "resolution": "720p"
+  }'
+~~~
+
+### 智能多帧
+
+多帧接口仅接受 `viduq2-pro` 或 `viduq2-turbo`。`image_settings` 至少 2 项、最多 9 项；每项可指定关键帧、提示词和相邻关键帧时长。
+`start_image` 只能有一张，`image_settings[].key_image` 必填；帧间时长为 2–7 秒，分辨率可选 `540p`、`720p`、
+`1080p`，默认 `720p`。首帧与关键帧图片支持 PNG、JPEG、JPG、WEBP，单张不超过 50 MB；首帧宽高比需在 `1:4` 到 `4:1` 之间，
+Base64 需带 MIME 前缀，整个请求体不超过 10 MB。可选的 `watermark`、`wm_url`、`wm_position`、`meta_data`、`payload` 和 `callback_url`
+按上游接口定义传入；`wm_position` 可用 `top_left`、`top_right`、`bottom_right`、`bottom_left`。
+
+~~~bash
+curl --request POST "$BASE_URL/vidu/ent/v2/multiframe" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "model": "viduq2-turbo",
+    "start_image": "https://example.com/start.jpg",
+    "image_settings": [
+      {"key_image": "https://example.com/frame-1.jpg", "prompt": "The camera pans right.", "duration": 3},
+      {"key_image": "https://example.com/frame-2.jpg", "prompt": "The light turns warm.", "duration": 3}
+    ],
+    "resolution": "720p"
+  }'
+~~~
+
+### 场景特效模板
+
+`template` 和 `images` 为必填项。模板名称决定可用输入和参数。提示词最长 2000 字符；`subject_3` 和 `pubg_winner_hit`
+模板可省略提示词。`exotic_princess` 使用 `area` 选项，`beast_companion` 使用 `beast` 选项；宽高比选项也随模板而异。
+
+~~~bash
+curl --request POST "$BASE_URL/vidu/ent/v2/template" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "template": "exotic_princess",
+    "images": ["https://example.com/subject.jpg"],
+    "area": "china",
+    "watermark": false
+  }'
+~~~
+
+### 模板成片
+
+`story` 可选值包括 `love_story`、`workday_feels`、`monkey_king`、`pigsy`、`monk_tang` 和 `one_shot`；`images` 为必填项。
+图片支持 PNG、JPEG、JPG、WEBP，单张不超过 50 MB，请求体不超过 20 MB。
+
+~~~bash
+curl --request POST "$BASE_URL/vidu/ent/v2/template-story" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "story": "love_story",
+    "images": ["https://example.com/subject.jpg"]
+  }'
+~~~
+
+## 查询任务和列表
+
+创建响应中的 `task_id` 可用于通用查询接口。任务状态包括 `created`、`queueing`、`processing`、`success` 和 `failed`。
+
+~~~bash
+curl "$BASE_URL/v1/videos/$TASK_ID" \
+  --header "Authorization: Bearer $API_KEY"
+~~~
+
+Vidu 列表接口支持按 `task_ids`、`states`、`model_versions`、`templates`、`resolutions`、`created_at.from`、
+`created_at.to`、`pager.page`、`pager.pagesz` 和 `pager.page_token` 过滤或分页。多个筛选值可用逗号分隔；任务 ID 最多 100 个，
+模板和分辨率最多各 100 个，页码为 1–100000，每页 1–100 条。状态筛选值为 `created`、`queueing`、`processing`、
+`success` 或 `failed`；`created_at` 可传 Unix 秒数或可解析的日期时间，`from` 必须早于 `to`。`model` 与 `model_versions` 同时使用时必须匹配。
+`model_versions` 可用 `q1`、`q2`、`q3` 和 `2.0`。
+
+~~~bash
+curl --get "$BASE_URL/vidu/ent/v2/tasks" \
+  --header "Authorization: Bearer $API_KEY" \
+  --data-urlencode "task_ids=$TASK_ID" \
+  --data-urlencode "pager.page=1" \
+  --data-urlencode "pager.pagesz=10"
+~~~
+
+成功任务的 `creations` 中包含视频 URL、封面、可选的水印视频以及视频分辨率等信息。结果 URL 有效期有限，
+请及时下载或转存。
+
+## 下载视频
+
+~~~bash
+curl --fail --location "$BASE_URL/v1/videos/$TASK_ID/content" \
+  --header "Authorization: Bearer $API_KEY" \
+  --output generated.mp4
+~~~

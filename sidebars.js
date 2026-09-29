@@ -20,6 +20,10 @@ const sidebars = {
           collapsed: false,
           link: {type: 'doc', id: 'video/overview'},
           items: [
+            'video/vidu-q3',
+            'video/kling-new',
+            'video/kling',
+            'video/wan3',
             {
               type: 'category',
               label: '豆包 Seedance 视频生成',
