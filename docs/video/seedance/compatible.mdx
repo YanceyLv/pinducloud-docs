@@ -1,0 +1,125 @@
+---
+sidebar_position: 8
+title: Seedance 兼容接口
+---
+
+# Seedance 兼容接口
+
+已有 OpenAI 风格客户端可以通过 Videos 或 Responses 接口调用 Seedance。
+需要完整的任务列表、取消/删除和 `content.video_url` 结果时，使用
+[Seedance 视频接口](./overview)。不同入口的字段和响应外形不同，不能直接混用。
+
+~~~bash
+export BASE_URL="https://video.pinducloud.com.cn"
+export API_KEY="sk-your-api-key"
+~~~
+
+## Videos 接口
+
+| 方法 | 路径 | 用途 |
+| --- | --- | --- |
+| POST | `/v1/videos` | 创建视频任务 |
+| GET | `/v1/videos/:task_id` | 查询任务状态 |
+| GET / HEAD | `/v1/videos/:task_id/content` | 下载视频或查询响应头 |
+
+### 创建任务
+
+~~~bash
+curl --request POST "$BASE_URL/v1/videos" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "model": "doubao-seedance-2-0-fast-260128",
+    "prompt": "一只纸飞机飞过晴朗天空",
+    "seconds": 4,
+    "size": "480p",
+    "generate_audio": false
+  }'
+~~~
+
+| 兼容字段 | Seedance 含义 | 说明 |
+| --- | --- | --- |
+| `prompt` | 文本提示词 | 可与 `content` 中的媒体项配合 |
+| `seconds` | `duration` | 2.0 为 4~15 的整数或 `-1`；如同时传 `duration`，两者必须一致 |
+| `size` | 输出分辨率 | 可使用 `480p`、`720p`、`1080p`、`4k` 或 `1280x720` 等尺寸；受具体模型限制 |
+| `content` | 多模态输入 | 媒体对象和 `role` 格式与 Seedance 创建接口一致 |
+| `metadata` | Seedance 参数 | 可以放 `resolution`、`ratio`、`content` 等选项；同名字段同时存在时顶层优先 |
+| `generate_audio`、`return_last_frame` 等 | 对应生成选项 | 按[创建任务](./create)的类型及模型限制使用 |
+
+建议只选一种分辨率字段，不要同时传含义不同的 `size` 和 `resolution`。
+Fast/Mini 只接受 480p、720p，2.5 不接受 4K，也不能通过像素尺寸绕过限制。
+`seconds: -1` 为智能时长，不表示免费或负用量。
+
+该入口接受 JSON 和纯字段 multipart；Seedance 不接受 multipart 文件附件。
+本地文件先上传至[私域素材库](./private-assets)，再在媒体 URL 中引用
+`asset://<AssetId>`，或使用模型服务可读取的公网媒体地址。
+
+### 查询与下载
+
+保存创建响应中的 `id`，查询同一任务：
+
+~~~bash
+curl "$BASE_URL/v1/videos/task_gateway_doubao_01" \
+  --header "Authorization: Bearer $API_KEY"
+~~~
+
+成功任务的状态响应示例：
+
+~~~json
+{
+  "id": "task_gateway_doubao_01",
+  "object": "video",
+  "model": "doubao-seedance-2-0-fast-260128",
+  "status": "completed",
+  "progress": 100,
+  "created_at": 1790668800,
+  "completed_at": 1790669100
+}
+~~~
+
+Videos 使用 `queued`、`in_progress`、`completed`、`failed` 状态，不使用原生
+查询接口的 `running` 和 `succeeded`。不能要求该响应包含 `content.video_url`；
+成功后通过内容接口下载，或使用同一公开任务 ID 调用[原生查询接口](./query)获取地址。
+
+~~~bash
+curl --fail --location "$BASE_URL/v1/videos/task_gateway_doubao_01/content" \
+  --header "Authorization: Bearer $API_KEY" \
+  --output generated.mp4
+~~~
+
+Seedance 的列表、取消和删除使用 `/doubao/api/v3/contents/generations/tasks`
+对应接口。本页不承诺 `GET /v1/videos`、`DELETE /v1/videos/:id` 或 remix 能力。
+
+## Responses 接口
+
+Responses 可用 `input` 表达提示词，以模型名称选择视频生成。
+长耗时生成推荐使用 `background: true`，保存响应 ID 后查询：
+
+~~~bash
+curl --request POST "$BASE_URL/v1/responses" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "model": "doubao-seedance-2-0-fast-260128",
+    "input": "一只纸飞机飞过晴朗天空",
+    "background": true,
+    "seconds": 4,
+    "resolution": "480p",
+    "generate_audio": false
+  }'
+~~~
+
+~~~bash
+curl "$BASE_URL/v1/responses/resp_example" \
+  --header "Authorization: Bearer $API_KEY"
+~~~
+
+把 `resp_example` 替换为创建响应中的实际 `id`；不要自行将 `resp_...` 改成
+`task_...`。该入口也支持同步等待和 `stream: true` 的 SSE 响应，流式输出是
+任务事件和最终结果，不是逐帧视频数据。成功结果通过 Responses 的 `output`
+消息返回，其中包含视频展示链接；不要按原生 `content.video_url` 解析。
+
+对于素材引用，可以使用顶层 `content` 数组传入与原生接口相同的媒体对象。
+`resolution`、`duration` / `seconds`、`ratio` 等参数仍受相同模型限制；
+真人素材仍需要认证和审核。各入口调用同一模型服务并按相应模型规则计费，
+使用兼容接口不会免除生成费用。

@@ -8,6 +8,10 @@ title: 使用 Seedance 私域素材库
 PinduCloud 私域素材库用于保存可重复使用的图片、视频和音频，并将素材归入
 Seedance 素材组。素材审核完成后，生成任务通过 `asset://<AssetId>` 引用素材。
 
+素材库分为 **AIGC 素材**和**已认证真人**两类。普通建组接口创建 `AIGC` 组；
+真人组必须通过[真人认证与人像素材](./human-verification)流程获得，组类型为
+`LivenessFace`。认证成功后仍需上传对应人像、等待审核，再用于生成任务。
+
 **注意：** 素材列表中的 `id`、`group_id` 和 `asset_id` 用途不同：
 
 - `id` 是平台素材记录的数字 ID，只用于素材刷新、删除等管理接口。
@@ -15,7 +19,7 @@ Seedance 素材组。素材审核完成后，生成任务通过 `asset://<AssetI
 - `asset_id` 是素材标识，审核状态为 `Active` 后，将它写成
   `asset://<AssetId>` 放入生成任务的媒体 URL 字段。
 
-`preview_url`（如果返回）用于预览。有效且上游可访问时，也可以作为普通公网
+`preview_url`（如果返回）用于预览。有效且模型服务可访问时，也可以作为普通公网
 媒体 URL 输入；但临时签名地址会过期，不适合替代稳定的 `asset://<AssetId>` 引用。
 
 ## 鉴权和响应
@@ -33,22 +37,18 @@ export BASE_URL="https://video.pinducloud.com.cn"
 export API_KEY="sk-your-api-key"
 ~~~
 
-后台页面仍通过 `/api/user/seedance/...` 使用登录会话访问令牌或个人访问令牌。
-两套入口共享当前用户的素材数据；API Key 应调用本文的 `/v1/seedance/...`，
-不能直接代替后台访问令牌调用 `/api/user/...`。
-
-**版本要求：** 服务端需部署支持 `/v1/seedance` 的版本。旧版本只有后台素材管理
-接口，升级前不能仅替换路径或凭证就使用本文的 API Key 接口。
+控制台和本文接口共享当前用户的素材数据。程序使用本文列出的 API Key 接口，
+无需获取浏览器登录凭证，也无需重复上传控制台已有素材。
 
 ### 用户级共享与权限
 
 - 同一 PinduCloud 用户的有效 API Key 共享该用户的全部素材组和媒体，包括通过
   控制台或其他 Key 创建的数据；无需按 Key 重建素材组或重复上传。
 - 不同用户相互隔离。请求中的 `user_id` 不能改变资源归属。
-- 同用户的 Key 可以查询、上传、刷新、改名和删除素材；轮换 Key 不会改变已有
-  素材组和素材的上游绑定。
+- 同用户的 Key 可以查询、上传、刷新、改名和删除素材；轮换 PinduCloud API Key
+  不会改变已有素材的归属。
 - 查询素材不按 Key 的模型列表拆分；创建素材组时检查所选模型和分组的访问权限，
-  生成任务仍单独检查调用 Key 的模型权限及可用渠道。
+  生成任务仍单独检查调用 Key 的模型权限及模型是否可用。
 - Key 被禁用、删除、过期、额度耗尽，或不符合 IP、用户状态、分组访问限制时，
   请求会按现有 API Key 认证规则被拒绝；用户的素材不会因此删除。
 - 素材管理本身不扣视频生成额度，生成任务另行计费。所有 Key 共用用户级素材
@@ -81,19 +81,19 @@ export API_KEY="sk-your-api-key"
 | 状态 | 含义 | 是否可以用于生成 |
 | --- | --- | --- |
 | `Processing`、`Pending` | 素材仍在处理或审核 | 否 |
-| `Active`、`Success`、`Succeeded` | 素材接口报告处理完成 | 可尝试生成，仍以上游受理结果为准 |
+| `Active`、`Success`、`Succeeded` | 素材接口报告处理完成 | 可尝试生成，仍以模型受理结果为准 |
 | `Failed` | 素材处理或审核失败 | 否 |
 | `Deleting` | 素材或素材组正在删除 | 否 |
 
 服务会在后台同步处理中素材的状态。列表页面在存在待处理素材时会定时重新获取
 列表；也可以调用单个素材的刷新接口立即检查一次。客户端不应把上传接口返回
 `202` 误认为素材已经可以生成。处理完成也不代表生成账号已完成素材同步或具备全部
-使用权限，生成接口仍可能返回上游同步错误。
+使用权限，生成接口仍可能返回素材同步错误。
 
 ## 控制台上传本地文件
 
 1. 登录 PinduCloud，打开 **私域素材库**（`/seedance-assets`）。
-2. 创建一个素材组并选中它。
+2. 在 **AIGC 素材**中创建并选中普通素材组；真人素材请先在 **已认证真人**中完成认证。
 3. 将文件拖入素材列表区域，或点击上传按钮选择一个或多个文件。
 4. 上传队列会逐个处理文件，并分别显示排队、上传中、已完成和失败状态。
 5. 单个文件上传完成后，素材记录通常仍为 `Processing`。等待素材状态变为
@@ -127,9 +127,11 @@ export API_KEY="sk-your-api-key"
 | --- | --- | --- |
 | GET | `/v1/seedance/asset-groups` | 列出当前用户的素材组 |
 | GET | `/v1/seedance/asset-groups/:id` | 查询单个素材组详情 |
-| POST | `/v1/seedance/asset-groups` | 创建素材组 |
-| PUT | `/v1/seedance/asset-groups/:id` | 修改素材组名称 |
+| POST | `/v1/seedance/asset-groups` | 创建普通 AIGC 素材组 |
+| PUT | `/v1/seedance/asset-groups/:id` | 修改素材组名称、说明和标签 |
 | DELETE | `/v1/seedance/asset-groups/:id` | 删除素材组及其素材 |
+| POST | `/v1/seedance/validation-sessions` | 创建真人认证会话 |
+| GET | `/v1/seedance/validation-sessions/:id` | 查询认证进度和成功后的素材组 |
 | GET | `/v1/seedance/assets` | 分页列出素材 |
 | GET | `/v1/seedance/assets/:id` | 查询单个素材详情 |
 | POST | `/v1/seedance/assets/upload` | 上传本地文件 |
@@ -150,9 +152,13 @@ curl --request GET "$BASE_URL/v1/seedance/asset-groups" \
 
 响应中的 `group_id` 用于后续列出素材和上传文件：
 
-支持 `search`（名称或组 ID 模糊搜索）、`group_id` / `group_ids`、`ids`（本地数字 ID）、
+支持 `search`（名称或组 ID 模糊搜索）、`group_id` / `group_ids`、`ids`（平台数字 ID）、
 `status` / `statuses`（`active`、`deleting`、`all`）、`created_after`、`created_before`、
 `sort_by` 和 `sort_order`。时间、排序和批量参数的规则与下面的素材列表一致。
+
+响应中的 `group_type` 区分 `AIGC` 与 `LivenessFace`。当前列表接口没有按
+`group_type` 筛选的参数，调用方可读取该字段分类显示；分页查询时需遍历所需页，
+不能只过滤第一页就认为拿到了全部真人素材组。
 
 不传分页参数时保留全部组的 `data` 数组；显式传入 `p` 或 `page_size` 后启用分页，
 响应保留 `data` 并增加 `total`、`page`、`page_size`。例如：
@@ -176,24 +182,28 @@ curl --get "$BASE_URL/v1/seedance/asset-groups" \
       "id": 12,
       "group_id": "asset-group-xxxxxxxx",
       "name": "product-assets",
+      "group_type": "AIGC",
       "status": "Active"
     }
   ]
 }
 ~~~
 
-### 创建素材组
+### 创建普通素材组
 
 素材组名称必填，去除首尾空白后不能为空，最多 64 个字符；同一用户不能创建
 同名素材组，名称比较不区分大小写。
 
 通过 API Key 创建时还必须提供 `model`（最多 191 个字符），例如
-`doubao-seedance-2-0-fast-260128`。平台会在该 Key 的可用分组中选择支持该模型的
-启用 Doubao 渠道；模型不在 Key 的允许范围或没有可用渠道时，创建失败。
-支持管理员配置的模型别名。
+`doubao-seedance-2-0-fast-260128`。模型必须在该 Key 允许访问的范围内；
+模型未开放或暂时无可用服务时，创建失败。可用模型通过 `GET /v1/models` 查询。
 
-`model` 仅决定建组时选用的上游渠道，不是素材的独占模型标签。已有组继续使用
-原有上游绑定，修改名称不会重新绑定模型。
+`model` 用于选择建组所需的模型服务，不是素材的独占模型标签。其他模型能否引用
+仍取决于模型能力和素材权限。修改组名称不会改变素材类型。
+
+该接口固定创建 `AIGC` 组，不接受 `GroupType`，包括 `GroupType: "AIGC"`。
+创建真人组请使用[认证会话接口](./human-verification)，不要传入
+`GroupType: "LivenessFace"` 尝试代替认证。
 
 ~~~bash
 curl --request POST "$BASE_URL/v1/seedance/asset-groups" \
@@ -205,13 +215,17 @@ curl --request POST "$BASE_URL/v1/seedance/asset-groups" \
 创建成功后保存返回的 `id` 和 `group_id`。后续请求使用 `group_id` 选择该组，
 修改或删除该组时使用数字 `id`。
 
-### 修改素材组名称
+### 修改素材组信息
+
+`name` 必填，最多 64 字符；`description` 可选，最多 1024 字符；`tags` 可选，
+最多 512 字符，类型为字符串。可选字段省略时保留原值，传空字符串时清空。
+同名限制与创建一致，不能通过编辑改变 `group_type` 或取得真人认证资格。
 
 ~~~bash
 curl --request PUT "$BASE_URL/v1/seedance/asset-groups/12" \
   --header "Authorization: Bearer $API_KEY" \
   --header "Content-Type: application/json" \
-  --data '{"name":"product-assets-v2"}'
+  --data '{"name":"product-assets-v2","description":"商品参考素材","tags":"商品,展示"}'
 ~~~
 
 成功后返回更新后的素材组对象。处于 `Deleting` 状态的素材组不能重命名。
@@ -223,8 +237,9 @@ curl --request DELETE "$BASE_URL/v1/seedance/asset-groups/12" \
   --header "Authorization: Bearer $API_KEY"
 ~~~
 
-删除素材组会同时删除组内素材记录。删除过程中组和素材会进入
-`Deleting` 状态；如果清理失败，记录会保留，待服务恢复后可再次调用同一路径重试。
+成功受理返回 HTTP `202` 和 `{"success":true,"message":"asset group deletion queued","data":null}`。
+删除素材组会同时清理组内素材和存储文件，普通组和真人组使用同一接口。删除过程中
+组和素材会进入 `Deleting` 状态；系统自动重试暂时失败的清理，也可调用同一路径触发重试。
 确认素材组从列表消失后，才表示删除流程完成。删除前请确认没有任务仍在引用其中
 的素材。
 
@@ -266,7 +281,7 @@ curl --request POST "$BASE_URL/v1/seedance/assets/upload" \
 
 响应中的 `asset_id` 可以先保存，但只有状态变为 `Active`、`Success` 或
 `Succeeded` 后才能通过 `asset://` 在生成任务中使用。`preview_url` 可能为空或在
-一小时后失效，不能将它长期保存为固定输入地址。
+有效期结束后失效，不能将它长期保存为固定输入地址。
 
 ### 登记外部媒体地址
 
@@ -322,11 +337,11 @@ curl --get "$BASE_URL/v1/seedance/assets" \
 | `status` | 否 | `all` | `all`、`processing`、`deleting`、`active`、`failed` |
 | `group_ids` | 否 | 空 | 多个字符串组 ID，与 `group_id` 互斥 |
 | `asset_id` / `asset_ids` | 否 | 空 | 单个 / 多个 `asset_id` 精确匹配，两者互斥 |
-| `ids` | 否 | 空 | 多个本地数字素材 ID |
+| `ids` | 否 | 空 | 多个平台数字素材 ID |
 | `statuses` | 否 | 空 | 多个状态，与 `status` 互斥 |
 | `asset_types` | 否 | 空 | 多个类型，与 `asset_type` 互斥 |
-| `created_after` | 否 | 空 | 本地创建时间大于等于该时间，RFC3339 |
-| `created_before` | 否 | 空 | 本地创建时间严格小于该时间，RFC3339 |
+| `created_after` | 否 | 空 | 平台记录创建时间大于等于该时间，RFC3339 |
+| `created_before` | 否 | 空 | 平台记录创建时间严格小于该时间，RFC3339 |
 | `sort_by` | 否 | `id` | `id`、`created_at`、`updated_at`、`name` |
 | `sort_order` | 否 | `desc` | `asc` 或 `desc` |
 
@@ -336,8 +351,8 @@ curl --get "$BASE_URL/v1/seedance/assets" \
 状态、类型和排序方向不区分大小写；搜索中的 `%`、`_`、`#` 按普通文字匹配。
 
 时间示例：`2026-09-20T00:00:00Z`，也可使用带时区偏移的 RFC3339 时间。
-时间范围为左闭右开，开始时间必须早于结束时间。创建及更新时间均指本地记录时间。
-默认按本地 ID 倒序；其他排序字段相同时以 ID 同方向排序。页码超出末页时返回末页，
+时间范围为左闭右开，开始时间必须早于结束时间。创建及更新时间均指平台记录时间。
+默认按数字 ID 倒序；其他排序字段相同时以 ID 同方向排序。页码超出末页时返回末页，
 空结果返回第一页；并发增删期间页码分页不保证快照一致。
 
 非法参数、单复数冲突、非正整数分页参数返回 HTTP 400。`page_size` 超过 100 时
@@ -384,15 +399,18 @@ curl --get "$BASE_URL/v1/seedance/assets" \
 分页筛选影响；即使当前 `status` 只请求 `Active`，同一组范围内的待处理素材也会使它为
 `true`。
 
-通常每 5 秒查询一次列表即可，`has_pending: false` 后停止轮询。后台负责同步上游
+通常每 5 秒查询一次列表即可，`has_pending: false` 后停止轮询。平台负责同步素材审核
 状态，不需要为每个素材反复调用刷新接口。网络超时不等于创建失败，上传或生成
 请求不要盲目重发，应先查询已创建的素材或任务，避免重复创建。
 
-`preview_url` 的行为与素材来源有关：文件素材每次列表请求都会生成一小时有效的
-临时预览地址；外部地址素材使用登记时的地址。预览地址可能为空、过期或暂时不可用，
+`preview_url` 的行为与素材来源有关：文件素材使用临时预览地址，列表会提供当前可用
+地址；外部地址素材可能使用登记时的地址。预览地址可能为空、过期或暂时不可用，
 但这不改变 `asset_id` 和素材审核状态，也不改变任务引用
 格式。重复使用素材时，优先采用 `asset://<AssetId>`；若直接提交公网 URL，则
-按普通外部媒体处理，需要保证上游读取时仍可访问。
+按普通外部媒体处理，需要保证模型服务读取时仍可访问。
+
+上传的文件不会在审核通过后自动删除，保留至用户删除素材或素材组。
+临时预览链接失效不表示原文件已删除；重新查询列表可获取当前预览地址。
 
 ### 查询单个素材或素材组
 
@@ -404,13 +422,13 @@ curl "$BASE_URL/v1/seedance/asset-groups/12" \
   --header "Authorization: Bearer $API_KEY"
 ~~~
 
-路径使用本地数字 `id`，成功返回 `success/message/data`，其中 `data` 为单个对象。
+路径使用平台数字 `id`，成功返回 `success/message/data`，其中 `data` 为单个对象。
 不存在或不属于当前用户的记录统一返回 HTTP 404；非法 ID 返回 HTTP 400。
-这些查询读取本地状态，不隐式请求上游。素材详情会生成临时 `preview_url`，签名
-暂时失败时仍返回记录，预览地址为空或省略；需要立即同步上游时使用下面的刷新接口。
+这些查询返回已同步的状态，不会立即触发审核状态更新。素材详情包含临时 `preview_url`，
+预览暂时不可用时仍返回记录，地址为空或省略；需要立即检查审核进度时使用下面的刷新接口。
 
-这些筛选和详情能力是网关提供的扩展。当前上游为书言，使用其 AIGC 素材组接口，
-不包含火山直连的 H5 真人认证接口或认证素材组流程。
+这些详情接口同时适用于 AIGC 与已认证真人素材。真人认证进度需要查询认证会话，
+素材详情中的 `Active` 与认证会话的 `Succeeded` 是两个不同阶段。
 
 ### 立即刷新单个素材状态
 
@@ -430,9 +448,9 @@ curl --request DELETE "$BASE_URL/v1/seedance/assets/101" \
   --header "Authorization: Bearer $API_KEY"
 ~~~
 
-正常删除完成后，素材会从列表中移除。如果素材已经处于 `Deleting`，接口会返回
-HTTP `202` 并重新排队清理；请重新列出素材，确认记录消失后再视为完成。删除失败
-时素材会保留在 `Deleting` 状态，重复调用删除接口可以触发重试。
+成功受理返回 HTTP `202` 和 `{"success":true,"data":null}`，表示已加入删除队列。
+素材会暂时处于 `Deleting`，系统完成文件和素材清理后从列表移除。
+重复调用删除接口可触发重试；确认记录消失后再视为完成。普通素材和真人素材均适用。
 
 ### 批量删除素材
 
@@ -511,7 +529,7 @@ curl --request POST "$BASE_URL/v1/seedance/assets/batch-delete" \
 外部媒体的可访问性和格式要求；它与私域素材 ID 引用是两种方式。
 
 选择公网 URL 方式时，媒体必须符合所选模型的类型、格式及角色要求；地址应在
-上游读取期间持续有效。首帧、首尾帧和多模态参考素材的组合限制见[创建
+模型服务读取期间持续有效。首帧、首尾帧和多模态参考素材的组合限制见[创建
 Seedance 视频生成任务](./create)。
 
 ## 常见问题
@@ -525,13 +543,17 @@ Key 调用列表接口会得到同一套素材组和媒体，包含控制台已�
 
 `Active` 是素材查询接口报告的处理状态，不保证生成接口一定受理。若生成返回
 HTTP `409` 和“素材尚未同步到可用账号，请稍后重试”，保留素材 ID、所用模型和
-错误中的 request ID，联系平台确认上游同步情况；不要把该响应视为已创建视频任务。
+错误中的 request ID，联系平台确认素材同步情况；不要把该响应视为已创建视频任务。
 
-同一上游账号下，不同 Seedance 2.0 模型分组的 API Key 可以共享素材库，不同上游
-账号相互隔离。因此不能仅凭标准版/Fast 模型不同、平台渠道编号不同或 Key 不同就
-断言素材不可共享，也不能仅凭这条同步错误断言是明星或真人审核不通过。
+若错误码为 `private_asset_mapping_pending`，按 `Retry-After` 指定的秒数等待后重试，
+当前等待值为 5 秒。客户端始终使用原来的 `asset_id`，无需因切换 API Key 或模型
+自行更改引用。普通素材可在具备可用原件和目标服务权限时自动准备；首次调用可能需要等待。
 
-平台保持 `asset://` 引用，不会自动替换成普通 OSS URL。
+已认证真人的认证资格不保证在不同模型服务之间自动共享。切换模型时仍需满足目标模型的
+真人素材权限；不能通过重复上传同一张图片替代认证。持续失败时请联系平台核查，
+不要仅凭同步错误断言人像审核不通过。
+
+生成任务使用 `asset://` 引用，平台不会把真人素材自动降级为普通素材来绕过认证。
 
 ### 上传接口返回成功但状态仍是 Processing
 
@@ -543,7 +565,7 @@ HTTP `202` 只表示文件已经进入处理流程。后台会继续同步状态
 
 文件素材的 `preview_url` 是短期签名地址，列表接口会按需重新生成；预览失败时
 可以重新列出素材或刷新单个素材。若将它作为普通 URL 输入，需要确保有效期覆盖
-任务排队和上游读取阶段；提交时可访问不保证稍后仍可访问。稳定复用素材应优先
+任务排队和模型服务读取阶段；提交时可访问不保证稍后仍可访问。稳定复用素材应优先
 使用 `asset://<AssetId>`，避免依赖已保存的旧预览地址。
 
 ### 使用 asset:// 仍然失败

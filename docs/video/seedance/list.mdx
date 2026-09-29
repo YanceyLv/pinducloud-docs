@@ -44,10 +44,11 @@ curl --get "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 | filter.model | 单个字符串，最长 191 字符 | 空 | 按模型 ID过滤 |
 | filter.status | queued、running、succeeded、failed、cancelled | 空 | 按状态过滤 |
 | filter.service_tier | default、flex | default | 按服务等级过滤 |
-| filter.task_ids | 可重复，最多 100 个 | 空 | 按 PinduCloud 任务 ID过滤 |
+| filter.task_ids | 可重复，最多 100 个，每个非空且最长 191 字符 | 空 | 按 PinduCloud 任务 ID过滤 |
 
 过滤条件之间按 AND 关系处理。未传 filter.model 时表示所有当前用户可见的
-Seedance 模型。列表默认使用近 7 天的任务窗口，过期的任务记录不会被重新查询。
+Seedance 任务。列表仅覆盖最近 7 天的创建记录，超出窗口的任务不在列表中返回；
+这不是视频下载链接的有效期。
 `filter.service_tier` 只是对已保存任务的字段进行筛选，不代表当前
 Seedance 2.0 创建入口可以传入 `service_tier`。
 
@@ -95,4 +96,5 @@ items 中每项的任务字段与[单任务查询](./query)相同。处理中任
 ## 参数错误
 
 以下情况会返回 400：页码或每页数量不在范围内、同一个单值参数重复出现、状态
-值不受支持、任务 ID为空或超过数量限制，以及向列表接口发送请求体。
+值不受支持、任务 ID为空或超过数量限制、出现未列出的查询参数，以及向列表接口发送请求体。
+当前 `filter.status` 不接受 `expired`；单任务查询可能返回该终态，两者取值范围不同。

@@ -42,6 +42,10 @@ Content-Type: application/json
 | Seedance 查询任务 | GET | /doubao/api/v3/contents/generations/tasks/:task_id |
 | Seedance 查询列表 | GET | /doubao/api/v3/contents/generations/tasks |
 | Seedance 取消或删除 | DELETE | /doubao/api/v3/contents/generations/tasks/:task_id |
+| Seedance 素材组列表 / 创建普通组 | GET / POST | /v1/seedance/asset-groups |
+| Seedance 上传媒体 | POST | /v1/seedance/assets/upload |
+| Seedance 创建真人认证会话 | POST | /v1/seedance/validation-sessions |
+| Seedance 查询真人认证结果 | GET | /v1/seedance/validation-sessions/:id |
 | H3 创建视频 | POST | /hailuo/v2/video_generation |
 | H3 视频再生成 | POST | /hailuo/v2/video_regeneration |
 | H3 Context-IR | POST | /hailuo/v2/h3_context_ir |
@@ -50,6 +54,10 @@ Content-Type: application/json
 | H3 取消或删除 | DELETE | /hailuo/v2/video_generation/:task_id |
 
 请求路径中的 `/doubao` 和 `/hailuo` 是 PinduCloud 的接口前缀。
+
+Seedance 的素材管理、真人认证与视频生成是不同步骤。完整流程见
+[私域素材库](./seedance/private-assets)和[真人认证与人像素材](./seedance/human-verification)。
+已有 OpenAI 客户端可使用 [Seedance 兼容接口](./seedance/compatible)。
 
 ## 统一任务流程
 

@@ -26,8 +26,8 @@ curl --request DELETE \
 | --- | --- | --- |
 | queued | 请求取消并确认 | 任务变为 `cancelled`，预扣费用按结算规则退回 |
 | running | 同步任务状态并按结果处理 | 生成已进入执行阶段时可能无法立即取消 |
-| succeeded | 删除任务 | 任务删除，PinduCloud 保留必要的任务和计费历史 |
-| failed | 删除任务 | 删除失败任务记录，失败任务本身不产生最终费用 |
+| succeeded | 删除任务结果 | 不能继续获取结果；保留必要的任务和计费历史，已完成的费用不退款 |
+| failed | 删除任务结果 | 保留必要的任务和计费历史；失败任务按结算规则退款 |
 | cancelled / expired | 按已结束任务处理 | 不能恢复任务；历史记录由 PinduCloud 保留 |
 
 取消或删除前，PinduCloud 会尽量同步任务最终状态。若取消已经提交但还没有办法确认，
@@ -35,7 +35,7 @@ curl --request DELETE \
 
 ## 响应
 
-删除成功时没有业务响应体，PinduCloud 对外返回空 JSON：
+删除成功时返回 HTTP `200` 和空 JSON：
 
 ~~~json
 {}
@@ -47,7 +47,7 @@ curl --request DELETE \
 | --- | --- | --- |
 | 400 | invalid_request | 任务 ID或请求格式不合法 |
 | 401 | invalid_api_key | Token缺失或无效 |
-| 404 | task_not_found | 任务不存在、不属于当前用户或已过期 |
+| 404 | task_not_found | 任务不存在、不属于当前用户或不属于该接口支持的任务 |
 | 429 | rate_limit_exceeded | 请求频率超限 |
 | 502 | task_sync_failed | 删除前无法取得可靠的任务状态 |
 | 503 | task_cancel_pending | 取消已提交，等待状态确认 |
@@ -55,3 +55,7 @@ curl --request DELETE \
 
 删除操作不可用于恢复任务，也不会延长视频下载 URL的有效期。需要保留视频时，
 请在删除前完成下载或转存。
+
+取消正在处理的任务，不等同于删除已完成任务。不要只根据一次 DELETE 的响应
+自行计算退款；以任务最终状态和使用日志中的结算结果为准。此接口不删除私域
+素材组或输入媒体，管理素材请使用[素材删除接口](./private-assets)。

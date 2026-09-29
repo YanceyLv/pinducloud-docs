@@ -28,9 +28,11 @@ const sidebars = {
               items: [
                 'video/seedance/create',
                 'video/seedance/private-assets',
+                'video/seedance/human-verification',
                 'video/seedance/query',
                 'video/seedance/list',
                 'video/seedance/delete',
+                'video/seedance/compatible',
               ],
             },
             {

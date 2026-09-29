@@ -38,15 +38,15 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 | --- | --- | --- | --- | --- |
 | model | string | 是 | 已开放的 Seedance 模型 ID | 选择模型和对应计费规则 |
 | content | array | 是 | 文本、图片、视频、音频或 Draft 项 | 描述生成内容及参考素材 |
-| resolution | string | 否 | 标准版为 `480p`、`720p`、`1080p`、`4k`；Fast/Mini 为 `480p`、`720p` | 输出分辨率；未传时标准版按 `1080p` 预估，Fast/Mini 按 `720p` 预估 |
+| resolution | string | 否 | 2.0 标准版：`480p`、`720p`、`1080p`、`4k`；Fast/Mini：`480p`、`720p`；2.5：`480p`、`720p`、`1080p` | 未传时 Fast/Mini 按 `720p` 预估，标准版和 2.5 按 `1080p` 预估；不保证实际输出采用预估分辨率 |
 | ratio | string | 否 | 16:9、4:3、1:1、3:4、9:16、21:9、adaptive | 输出画面比例 |
-| duration | integer | 否 | 三个 2.0 模型为 `-1` 或 4~15 的整数秒 | `-1` 由模型在支持范围内选择时长；其他模型以对应接口为准 |
+| duration | integer | 否 | 三个 2.0 模型为 `-1` 或 4~15；2.5 入口接受 `-1` 或 2~30 | 单位为秒；`-1` 请求智能时长，实际结果由模型返回 |
 | frames | integer | 否 | 三个 2.0 模型的本站入口不接受 | 这是本站入口限制，不代表其他 Seedance 版本都不支持 |
-| callback_url | string | 否 | HTTP/HTTPS 公网地址 | 传递给上游接收状态通知；受理成功不保证回调可达 |
+| callback_url | string | 否 | HTTP/HTTPS 公网地址 | 接收模型服务的状态通知；受理成功不保证回调可达 |
 | return_last_frame | boolean | 否 | true / false | 成功时是否返回尾帧地址，默认 false |
 | service_tier | string | 否 | 三个 2.0 模型的本站入口不接受 | `default`/`flex` 仅用于列表过滤，其他模型以对应接口为准 |
 | execution_expires_after | integer | 否 | 3600~259200 | 从创建时间起的过期秒数，默认 172800 |
-| generate_audio | boolean | 否 | true / false | 当前三个 2.0 模型支持；`false` 用于请求无声视频，该布尔值会保留并传递给上游 |
+| generate_audio | boolean | 否 | true / false | `false` 用于请求无声视频；实际音频以生成结果为准 |
 | draft | boolean | 否 | 三个 2.0 模型的本站入口不接受 `true` | Draft 流程只适用于相应的其他模型 |
 | tools | array | 否 | 当前入口接受 `[{"type":"web_search"}]` | 是否实际执行以任务结果为准 |
 | safety_identifier | string | 否 | ASCII 字符串，最长 64 字符 | 终端用户稳定标识 |
@@ -67,15 +67,16 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 | 模型系列 | duration |
 | --- | --- |
 | Seedance 2.0 标准版/Fast/Mini | 4~15 秒，或 `-1` |
-| 其他 Seedance 模型 | 以对应接口和模型能力为准 |
+| Seedance 2.5 | 本站入口接受 2~30 秒，或 `-1`；实际可生成时长以模型处理结果为准 |
+| 其他 Seedance 模型 | 以对应模型能力为准，不套用 2.0 的范围 |
 
 系统会拒绝非整数和明显越界的时长；即使通过本站检查，模型服务仍可能因不支持某个
 时长而返回 400。
 
 ### content 项
 
-每一项通过 type 指明内容种类。文本项可以放在媒体项之前或之后，多个文本项
-会按顺序拼接。
+每一项通过 `type` 指明内容种类。`content` 至少包含一个非空文本或媒体项，文本项
+可以放在媒体项之前或之后；数组中的文本和媒体顺序会保留。
 
 | type | 主要字段 | role | 用途 |
 | --- | --- | --- | --- |
@@ -104,7 +105,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 }
 ~~~
 
-不要把不带 `asset://` 前缀的 `asset_id` 当作 URL。有效且上游可访问的
+不要把不带 `asset://` 前缀的 `asset_id` 当作 URL。有效且模型服务可访问的
 `preview_url` 可以作为普通公网媒体地址提交，媒体类型、格式和角色仍需满足
 所选模型的输入要求。
 临时地址可能在排队或读取前过期，长期复用应优先保存 `asset_id` 并使用
@@ -112,7 +113,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 
 ### 回调与状态同步
 
-`callback_url` 用于接收上游发送的异步状态通知。创建接口不以回调地址的可达性
+`callback_url` 用于接收模型服务发送的异步状态通知。创建接口不以回调地址的可达性
 作为受理前提，返回任务 ID 不表示回调地址验证成功或通知已送达。接收端必须
 公网可达；通知投递失败时，客户端仍应通过任务查询接口获取结果。
 
@@ -120,7 +121,15 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 `queued` 覆盖已保存的 `running`，也不要让非终态覆盖已保存的终态。最终结果通过
 [查询任务](./query)确认，并保留回调丢失时的轮询处理。
 
+回调载荷的任务标识不保证与创建响应中的公开 `task_...` ID 相同。保存创建响应的
+`id`，后续查询始终使用该 ID；不要直接把回调中的标识当作本站查询路径参数。
+真人认证中的同名 `callback_url` 是浏览器回跳地址，与视频任务状态通知不同。
+
 ## 输入约束
+
+以下媒体规格用于 2.0 系列接入参考。本站会检查内容结构、角色、数量和参数类型；
+外部文件的编码、尺寸、帧率及内容审核由模型服务继续检查，通过请求校验不等于生成成功。
+2.5 的输入规格与能力不能直接由此推断，未确认的组合以模型处理结果为准。
 
 ### 图片
 
@@ -131,7 +140,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 
 ### 视频
 
-- 仅 Seedance 2.0 系列支持输入视频，容器为 MP4 或 MOV。
+- Seedance 2.0 系列参考视频使用 MP4 或 MOV 容器。
 - 视频编码支持 H.264/AVC、H.265/HEVC；音频支持 AAC、MP3。
 - 单个视频 2~15 秒、24~60 FPS、大小不超过 50 MB，最多 3 个。
 - 所有参考视频总时长不超过 15 秒，宽高比为 [0.4, 2.5]，宽高为 300~6000
@@ -139,7 +148,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 
 ### 音频
 
-- 仅 Seedance 2.0 系列支持输入音频，格式为 WAV 或 MP3。
+- Seedance 2.0 系列参考音频使用 WAV 或 MP3 格式。
 - 单段音频 2~15 秒、大小不超过 15 MB，最多 3 段，总时长不超过 15 秒。
 - 音频不能单独出现，至少还要提供一张参考图或一个参考视频。
 
@@ -216,9 +225,13 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 
 ### Draft 转正式视频
 
-1. 先使用 `draft: true` 创建支持 Draft 的模型样片任务；当前三个 2.0 模型不接受该字段。
+1. 先使用 `draft: true` 创建支持 Draft 的模型样片任务；当前三个 2.0 模型不接受 `draft: true`，但允许传 `draft: false`。
 2. 查询样片并确认结果。
-3. 将样片任务 ID放入新的 draft_task.id，创建正式任务。
+3. 将样片任务 ID 放入新的 `draft_task.id`，创建正式任务。
+
+样片请求须使用 `480p`，不能同时启用 `return_last_frame: true` 或
+`service_tier: "flex"`。正式请求中的 `draft_task` 必须是 `content` 唯一一项，
+不能再混入文本、图片、视频或音频。下面示例仅适用于已开通 Draft 能力的模型。
 
 ~~~json
 {
@@ -251,3 +264,11 @@ id 用于后续查询、列表过滤和取消/删除。首次查询应在创建�
 `400`，不会产生已创建的任务。其他参数可能在任务处理时继续校验；任务已经创建
 但生成失败时，查询接口返回 `status: "failed"` 和 `error`。创建成功只表示任务
 已受理。
+
+使用已认证真人时，先按[真人认证与人像素材](./human-verification)完成认证和人像
+上传，再以 `image_url` / `reference_image` 引用审核通过的 `asset_id`。普通建组
+不能通过传入 `GroupType: "LivenessFace"` 跳过认证。
+
+若收到 `409 private_asset_mapping_pending`，素材仍在准备，按 `Retry-After`
+等待后再尝试；这次响应没有返回任务 ID，不代表已创建视频。网络超时则应先查询
+任务列表，避免把已成功受理的创建请求重复发送。计费和退款规则见[查询任务](./query)。

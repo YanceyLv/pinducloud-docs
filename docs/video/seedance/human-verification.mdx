@@ -1,0 +1,264 @@
+---
+sidebar_position: 4
+title: 真人认证与人像素材
+---
+
+# 真人认证与人像素材
+
+使用已认证真人素材需要完成两个步骤：先由本人完成 H5 真人认证，再上传对应人像
+并等待素材审核。认证成功会创建 `LivenessFace` 素材组；只有人像审核通过后，
+才能获得可用于生成任务的 `asset://<AssetId>` 引用。
+
+普通建组接口 `POST /v1/seedance/asset-groups` 只创建 `AIGC` 组，不接受
+`GroupType` 参数。不能通过修改组类型跳过认证。
+
+## 控制台操作
+
+1. 打开 **私域素材库 → 已认证真人**，点击创建认证素材组。
+2. 填写名称，可补充说明和标签，创建认证会话。
+3. 打开认证链接或使用页面提供的二维码，由本人按页面提示完成认证。
+4. 页面查询认证结果；确认成功后，进入上传人像步骤。
+5. 上传与认证身份一致的人像图片，等待素材审核通过后复制素材 ID。
+
+控制台的人像选择支持 JPG/JPEG、PNG、WebP、GIF、HEIC，大小上限 30 MB。
+页面关闭不会使已经创建的会话立即失效，但必须在其有效期内完成认证。
+
+## API 鉴权与接口
+
+示例采用 Bash，所有请求使用 PinduCloud API Key：
+
+~~~bash
+export BASE_URL="https://video.pinducloud.com.cn"
+export API_KEY="sk-your-api-key"
+~~~
+
+| 方法 | 路径 | 用途 |
+| --- | --- | --- |
+| POST | `/v1/seedance/validation-sessions` | 创建认证会话，获取认证页面链接 |
+| GET | `/v1/seedance/validation-sessions/:id` | 查询认证状态及成功后的素材组 |
+| POST | `/v1/seedance/assets/upload` | 向认证成功的组上传人像 |
+| GET | `/v1/seedance/assets` | 查询人像审核状态及素材 ID |
+
+同一用户的有效 API Key 可以查询该用户创建的会话和素材。不同用户之间隔离。
+会话创建接口和查询接口使用 `success/message/data` 响应结构，必须检查 `success`，
+不能仅凭 HTTP `200` 或 `202` 判断认证是否通过。
+
+## 1. 创建认证会话
+
+~~~bash
+curl --request POST "$BASE_URL/v1/seedance/validation-sessions" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "name": "我的真人素材",
+    "description": "已授权的人像参考",
+    "tags": "人像,已授权",
+    "model": "doubao-seedance-2-0-fast-260128"
+  }'
+~~~
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `name` | string | 否 | 最多 64 字符；省略时自动命名，不能与已有组同名 |
+| `description` | string | 否 | 素材组说明，最多 1024 字符 |
+| `tags` | string | 否 | 标签文本，最多 512 字符；不是数组 |
+| `model` | string | 否 | 最多 191 字符；建议明确指定已开通的目标模型 |
+| `callback_url` | string | 否 | 认证后的浏览器回跳地址，HTTP/HTTPS，最长 2048 字符；省略时使用平台提供的回跳地址 |
+| `project_name` | string | 否 | 最多 191 字符；仅在接入配置要求指定项目时填写 |
+
+`callback_url` 不能包含 URL 用户名、密码或片段，也不要将 API Key 放入该地址。
+这是浏览器完成认证后的跳转地址，不是视频生成任务的异步通知地址。
+
+成功受理返回 HTTP `202`。以下为示意响应，ID、时间和链接应使用实际返回值：
+
+~~~json
+{
+  "success": true,
+  "message": "",
+  "data": {
+    "id": 42,
+    "status": "Pending",
+    "name": "我的真人素材",
+    "description": "已授权的人像参考",
+    "tags": "人像,已授权",
+    "launch_url": "https://verify.example.com/session/example",
+    "expires_at": 1790670600,
+    "created_at": 1790668800,
+    "updated_at": 1790668800
+  }
+}
+~~~
+
+保存数字 `data.id` 并打开 `data.launch_url`。当前平台会话有效期为 **30 分钟**，
+以 `expires_at` 为准，时间单位为 Unix 秒。认证链接和会话令牌只交给需要认证的本人，
+不要放入公开日志或分享给其他人。
+
+会话会固定关联创建时的认证服务，查询无需再次传入模型。创建失败且没有有效会话时，
+先根据错误信息处理，不要循环创建新会话。未开通认证能力的模型可能无法创建会话。
+
+## 2. 查询认证结果
+
+~~~bash
+curl "$BASE_URL/v1/seedance/validation-sessions/42" \
+  --header "Authorization: Bearer $API_KEY"
+~~~
+
+| `data.status` | 含义 | 客户端处理 |
+| --- | --- | --- |
+| `Creating` | 正在建立会话 | 稍后查询 |
+| `Pending` | 等待本人操作或认证结果确认 | 继续认证，每 5 秒查询一次 |
+| `Succeeded` | 认证成功，素材组已创建 | 保存 `group_id` 和 `local_group_id`，进入上传步骤 |
+| `Failed` | 会话失败 | 查看 `last_error`，处理原因后重新创建 |
+| `Expired` | 会话已过期 | 停止查询，重新创建会话 |
+| `Cancelled` | 会话已取消 | 停止查询；当前公开接口不提供主动取消会话操作 |
+
+查询会尝试更新认证结果。浏览器跳转成功、打开链接成功或 HTTP `200` 均不等于认证成功；
+应以 `Succeeded` 且返回 `group_id` 为准。查询失败时采用退避重试，达到 `expires_at`
+后停止等待，不要无限轮询。
+
+认证结果尚未就绪或暂时无法读取时，会话可能保持 `Pending`。`last_error` 是最近一次
+查询的错误提示，不一定代表最终失败。首次查询暂时找不到认证令牌时，也可能仍在等待
+结果同步；不要直接把会话当成成功或切换到另一个会话查询。
+
+成功时 `data` 包含：
+
+~~~json
+{
+  "id": 42,
+  "status": "Succeeded",
+  "name": "我的真人素材",
+  "group_id": "group-verified-example",
+  "local_group_id": 12,
+  "expires_at": 1790670600,
+  "created_at": 1790668800,
+  "updated_at": 1790669100
+}
+~~~
+
+`group_id` 是后续上传使用的字符串组 ID，`local_group_id` 是修改和删除组时使用的
+数字 ID。会话过期时间限制认证过程，不表示已经创建的组在该时间自动删除。
+
+## 3. 上传人像并等待审核
+
+~~~bash
+curl --request POST "$BASE_URL/v1/seedance/assets/upload" \
+  --header "Authorization: Bearer $API_KEY" \
+  --form "group_id=group-verified-example" \
+  --form "file=@./portrait.jpg" \
+  --form "name=portrait.jpg" \
+  --form "asset_type=Image"
+
+curl --get "$BASE_URL/v1/seedance/assets" \
+  --header "Authorization: Bearer $API_KEY" \
+  --data-urlencode "group_id=group-verified-example" \
+  --data-urlencode "p=1" \
+  --data-urlencode "page_size=24"
+~~~
+
+上传返回 `202` 只表示受理。等待素材状态变为 `Active`、`Success` 或 `Succeeded` 后，
+使用其 `asset_id`。认证会话状态与素材审核状态不能互相替代，`group_id` 也不能作为
+图片的 `asset_id`。上传响应、筛选和删除说明见[私域素材库](./private-assets)。
+
+## 4. 引用真人素材生成视频
+
+~~~bash
+curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "model": "doubao-seedance-2-0-fast-260128",
+    "content": [
+      {"type": "text", "text": "让参考人物自然微笑并轻轻点头"},
+      {"type": "image_url", "role": "reference_image", "image_url": {"url": "asset://asset-portrait-example"}}
+    ],
+    "resolution": "480p",
+    "duration": 4
+  }'
+~~~
+
+把示例素材 ID 替换为自己的实际值。更换同一用户的 PinduCloud API Key 不需要重建素材；
+目标模型仍须具有相应真人素材权限。认证资格不保证跨不同模型服务自动转移，若某个模型
+拒绝已认证素材，保留素材 ID、模型名称和 request ID 联系平台核查。
+
+## Action 格式认证接口
+
+需要 Action 请求格式的客户端可以使用下列两条接口。它们与上面的流程共享当前用户
+的素材库，但创建和查询响应结构不同。查询参数的大小写及 `Version=2024-01-01`
+必须保持一致。
+
+### 创建认证会话
+
+~~~bash
+curl --request POST \
+  "$BASE_URL/doubao/v2/assets?Action=CreateVisualValidateSession&Version=2024-01-01" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "CallbackURL": "https://app.example.com/verification/return",
+    "name": "我的真人素材",
+    "model": "doubao-seedance-2-0-fast-260128"
+  }'
+~~~
+
+`CallbackURL` 必填；`ProjectName` 可选。`name`、`description`、`tags`、`model`
+为可选的素材组织与模型选择字段，限制同会话接口。不要传入 `GroupType`。
+成功返回 HTTP `200`，认证页面地址在 `Result.H5Link`：
+
+~~~json
+{
+  "ResponseMetadata": {
+    "RequestId": "example-request-id",
+    "Action": "CreateVisualValidateSession",
+    "Version": "2024-01-01",
+    "Service": "ark",
+    "Region": "cn-beijing"
+  },
+  "Result": {
+    "BytedToken": "example-session-token",
+    "H5Link": "https://verify.example.com/session/example"
+  }
+}
+~~~
+
+`BytedToken` 是认证会话令牌，不是 API Key。保存它用于查询，不能把它写入视频
+生成请求或用它替换 `Authorization`。
+
+### 查询认证结果
+
+~~~bash
+curl --request POST \
+  "$BASE_URL/doubao/v2/assets?Action=GetVisualValidateResult&Version=2024-01-01" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"BytedToken":"example-session-token"}'
+~~~
+
+`BytedToken` 必填且必须属于当前用户创建的会话。`ProjectName` 可省略，使用创建时
+的值；创建时明确指定过项目的，查询不要改用其他项目。
+认证成功返回 HTTP `200`，并在 `Result.GroupId` 返回字符串素材组 ID：
+
+~~~json
+{
+  "ResponseMetadata": {
+    "RequestId": "example-request-id",
+    "Action": "GetVisualValidateResult",
+    "Version": "2024-01-01",
+    "Service": "ark",
+    "Region": "cn-beijing"
+  },
+  "Result": {"GroupId": "group-verified-example"}
+}
+~~~
+
+接下来使用该 `GroupId` 调用人像上传接口。需要数字组 ID 时，通过
+`GET /v1/seedance/asset-groups?group_id=group-verified-example` 查找。
+
+Action 接口不会返回 `success` 或 `data.status`。未完成认证时，查询当前可能返回
+HTTP `502`，错误位于 `ResponseMetadata.Error.Code` 和 `.Message`；不能把所有
+`502` 都当作等待状态。仅对明确的等待结果在会话有效期内间隔查询，其他错误应检查
+原因。令牌不存在或不属于当前用户返回 `404`，已过期会话返回 `400`。
+新接入建议使用前面的会话接口，以便明确区分等待、成功、失败和过期。
+
+`/doubao/v2/assets` 当前只支持这两个认证 Action。素材组和媒体增删改查请使用
+`/v1/seedance/...`，不要向该 Action 入口发送 `CreateAssetGroup`、`CreateAsset`
+或 `DeleteAssetGroup`。
