@@ -1,0 +1,310 @@
+---
+title: "自定义音色"
+sidebar_label: "13-音色克隆"
+---
+
+# 自定义音色
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+POST 创建或管理请求可通过 `model_name` 选择账号已开通的可灵型号；未传时读取 `model`，两者都省略时使用 `kling-v1`。即使接口参数表未列出模型字段，也需确保账号已开通所选型号及对应能力。
+
+### 创建自定义音色
+
+```text
+POST https://video.pinducloud.com.cn/kling/v1/general/custom-voices
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 是 | application/json | 数据交换格式 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求体
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `voice_name` | string | 是 |  | 音色名称<br />- 文本内容最大长度 20 个字符<br />- 创建后不再使用的音色可通过 API 删除 |
+| `voice_url` | string | 否 |  | 音色数据文件获取链接<br />- 支持 .mp3 / .wav / .mp4 / .mov 格式的音视频文件<br />- 音频中人声需干净无杂音，有且只能有一种人声，时长不短于 5 秒且不长于 30 秒 |
+| `video_id` | string | 否 |  | 历史作品 ID，可通过引用历史作品提供音频素材<br />- 仅满足以下条件的视频可以用于定制音色：<br />  - 使用 V2.6 版本模型生成且开启 sound 参数值为 on 的视频<br />  - 通过数字人 API 生成的视频<br />  - 通过对口型 API 生成的视频<br />- 音频中人声需干净无杂音，有且只能有一种人声，时长不短于 5 秒且不长于 30 秒 |
+| `callback_url` | string | 否 |  | 本次任务结果回调地址，发送给任务服务；是否投递及消息格式以实际服务行为为准。<br />- 查询接口用于确认最终任务状态，请保留创建响应中的任务 ID |
+| `external_task_id` | string | 否 |  | 自定义任务 ID<br />- 传入不会覆盖系统生成的任务 ID，本站任务查询仍使用创建响应返回的公开任务 ID<br />- 请注意，单用户下需要保证唯一性 |
+
+#### 请求示例
+
+```bash
+curl --request POST \
+  --url https://video.pinducloud.com.cn/kling/v1/general/custom-voices \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "video_id": "",
+    "voice_url": "https://p2-kling.klingai.com/kcdn/cdn-kcdn112452/kling-qa-test/out.mp3",
+    "voice_name": "定制人声",
+    "callback_url": ""
+  }'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, // 错误码；错误详情见 message 字段
+  "message": "string", // 错误信息
+  "request_id": "string", // 请求ID，系统生成，用于跟踪请求、排查问题
+  "data": {
+    "task_id": "string", // 任务ID，系统生成
+    "task_info": { // 任务创建时的参数信息
+      "external_task_id": "string" // 客户自定义任务ID
+    },
+    "task_status": "string", // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+    "created_at": 1722769557708, // 任务创建时间，Unix时间戳、单位ms
+    "updated_at": 1722769557708 // 任务更新时间，Unix时间戳、单位ms
+  }
+}
+```
+
+---
+
+### 查询自定义音色（单个）
+
+```text
+GET https://video.pinducloud.com.cn/kling/v1/general/custom-voices/{id}
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 否 | application/json | GET 查询不携带 JSON 请求体，可省略此头 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求示例
+
+```bash
+curl --request GET \
+  --url 'https://video.pinducloud.com.cn/kling/v1/general/custom-voices/{id}' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, // 错误码；错误详情见 message 字段
+  "message": "string", // 错误信息
+  "request_id": "string", // 请求ID，系统生成，用于跟踪请求、排查问题
+  "data": {
+    "task_id": "string", // 任务ID，系统生成
+    "task_status": "string", // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+    "task_status_msg": "string", // 任务状态信息，当任务失败时展示失败原因（如触发平台的内容风控等）
+    "task_info": { // 任务创建时的参数信息
+      "external_task_id": "string" // 客户自定义任务ID
+    },
+    "task_result": {
+      "voices": [
+        {
+          "voice_id": "string", // 定制的音色的ID；全局唯一
+          "voice_name": "string", // 定制的音色的名称
+          "trial_url": "string", // 定制的音色的试听音频下载URL
+          "owned_by": "kling" // 音色来源，kling为官方音色库，数字为创作者ID
+        }
+      ]
+    },
+    "final_unit_deduction": "string", // 任务服务原生积分信息；本站实际扣费以使用日志为准
+    "created_at": 1722769557708, // 任务创建时间，Unix时间戳、单位ms
+    "updated_at": 1722769557708 // 任务更新时间，Unix时间戳、单位ms
+  }
+}
+```
+
+---
+
+### 查询自定义音色（列表）
+
+列表仅返回当前用户在该接口创建的任务。响应使用本站的 `items` 分页结构；每项 `data` 保留原生任务字段，`task_id` 为本站公开任务 ID。外层 `created_at` 使用 Unix 秒，原生 `data` 内的时间单位见字段注释。
+
+#### 查询参数
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `pageNum` | integer | 否 | 1 | 页码，范围 1–500 |
+| `pageSize` | integer | 否 | 20 | 每页数量，范围 1–500 |
+| `filter.model` | string | 否 |  | 按原版模型名称筛选 |
+| `filter.task_ids` | string | 否 |  | 按公开任务 ID 筛选；重复传入参数指定多个 ID，最多 100 个 |
+
+
+```text
+GET https://video.pinducloud.com.cn/kling/v1/general/custom-voices
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 否 | application/json | GET 查询不携带 JSON 请求体，可省略此头 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求示例
+
+```bash
+curl --request GET \
+  --url 'https://video.pinducloud.com.cn/kling/v1/general/custom-voices?pageNum=1&pageSize=30' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "items": [{
+    "task_id": "task-example",
+    "platform": "kling",
+    "action": "custom_voices",
+    "status": "SUCCESS",
+    "progress": "100%",
+    "fail_reason": "",
+    "created_at": 1722769557,
+    "data": {
+      "code": 0,
+      // 错误码；错误详情见 message 字段
+      "message": "string",
+      // 错误信息
+      "request_id": "string",
+      // 请求ID，系统生成，用于跟踪请求、排查问题
+      "data": {
+        "task_id": "task-example",
+        // 任务ID，系统生成
+        "task_status": "succeed",
+        // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+        "task_status_msg": "string",
+        // 任务状态信息，当任务失败时展示失败原因（如触发平台的内容风控等）
+        "task_info": {
+          // 任务创建时的参数信息
+          "external_task_id": "string" // 客户自定义任务ID
+        },
+        "task_result": {
+          "voices": [{
+            "voice_id": "string",
+            // 定制的声音的ID；全局唯一
+            "voice_name": "string",
+            // 定制的音色的名称
+            "trial_url": "string",
+            // 定制的音色的试听音频下载URL
+            "owned_by": "kling" // 音色来源，kling为官方音色库，数字为创作者ID
+          }]
+        },
+        "final_unit_deduction": "string",
+        // 任务服务原生积分信息；本站实际扣费以使用日志为准
+        "created_at": 1722769557708,
+        // 任务创建时间，Unix时间戳、单位ms
+        "updated_at": 1722769557708 // 任务更新时间，Unix时间戳、单位ms
+      }
+    }
+  }],
+  "total": 1,
+  "page_num": 1,
+  "page_size": 30
+}
+```
+
+---
+
+### 查询官方音色（列表）
+
+```text
+GET https://video.pinducloud.com.cn/kling/v1/general/presets-voices
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 否 | application/json | GET 查询不携带 JSON 请求体，可省略此头 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求示例
+
+```bash
+curl --request GET \
+  --url 'https://video.pinducloud.com.cn/kling/v1/general/presets-voices?pageNum=1&pageSize=30' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, // 错误码；错误详情见 message 字段
+  "message": "string", // 错误信息
+  "request_id": "string", // 请求ID，系统生成，用于跟踪请求、排查问题
+  "data": [
+    {
+      "task_id": "string", // 任务ID，系统生成
+      "task_status": "string", // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+      "task_status_msg": "string", // 任务状态信息，当任务失败时展示失败原因（如触发平台的内容风控等）
+      "task_result": {
+        "voices": [
+          {
+            "voice_id": "string", // 系统预置的音色的ID；全局唯一
+            "voice_name": "string", // 系统预置的音色的名称
+            "trial_url": "string", // 系统预置的音色的试听音频下载URL
+            "owned_by": "kling" // 音色来源，kling为官方音色库，数字为创作者ID
+          }
+        ]
+      },
+      "created_at": 1722769557708, // 任务创建时间，Unix时间戳、单位ms
+      "updated_at": 1722769557708 // 任务更新时间，Unix时间戳、单位ms
+    }
+  ]
+}
+```
+
+---
+
+### 删除自定义音色
+
+```text
+POST https://video.pinducloud.com.cn/kling/v1/general/delete-voices
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 是 | application/json | 数据交换格式 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求体
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `voice_id` | string | 是 |  | 待删除的音色的 ID，仅支持删除自定义音色 |
+
+#### 请求示例
+
+```bash
+curl --request POST \
+  --url https://video.pinducloud.com.cn/kling/v1/general/delete-voices \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "voice_id": "850087542757535834"
+  }'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, // 错误码；错误详情见 message 字段
+  "message": "string", // 错误信息
+  "request_id": "string", // 请求ID，系统生成，用于跟踪请求、排查问题
+  "data": {
+    "task_id": "string", // 任务ID，系统生成
+    "task_status": "string" // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+  }
+}
+```

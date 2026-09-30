@@ -1,0 +1,268 @@
+---
+title: "图生视频"
+sidebar_label: "02-图生视频"
+---
+
+# 图生视频
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+以图片作为视频首帧，结合文本提示词生成视频。图生视频存在**两套请求协议**，共用同一端点，通过 `model` 与请求体结构区分：
+
+| 协议 | 适用模型 | 输入方式 | 能力 |
+|:---|:---|:---|:---|
+| **新版**（推荐） | `wan2.7-i2v` 等 wan2.7 系列 | `input.media` 数组 | 首帧生视频、首尾帧生视频、音频驱动、视频续写 |
+| **旧版** | `wan2.6-i2v`、`wan2.6-i2v-flash`、`wan2.5-i2v-preview`、`wan2.2-i2v-plus`、`wan2.2-i2v-flash`、`wanx2.1-i2v-turbo`、`wanx2.1-i2v-plus` | `input.img_url` 字段 | 仅首帧生视频；wan2.6/wan2.5 支持音频（`audio_url`）与自动配音，wan2.2/wanx2.1 支持视频特效模板 |
+
+---
+
+### 创建任务
+
+```text
+POST https://video.pinducloud.com.cn/ali/api/v1/services/aigc/video-generation/video-synthesis
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 是 | application/json | 数据交换格式 |
+| `Authorization` | string | 是 |  | 鉴权信息，`Bearer sk-your-pinducloud-token` |
+
+> 官方要求的 `X-DashScope-Async: enable` 头由平台自动补充，调用时无需携带。
+
+---
+
+### 请求体 — 新版协议（wan2.7）
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `model` | string | 是 |  | 模型名称，如 `wan2.7-i2v` |
+| `input.prompt` | string | 否 |  | 文本提示词，中英文，不超过 5000 字符，超出自动截断 |
+| `input.negative_prompt` | string | 否 |  | 反向提示词，不超过 500 字符，超出自动截断 |
+| `input.media` | array | 是 |  | 媒体素材列表，每个元素为 `{type, url}` 对象 |
+| `input.media[].type` | string | 是 |  | 素材类型：`first_frame`（首帧图）、`last_frame`（尾帧图）、`driving_audio`（驱动音频）、`first_clip`（首视频片段，用于视频续写）。每种类型在数组中最多出现一次 |
+| `input.media[].url` | string | 是 |  | 素材地址。支持公网 HTTP(S) URL；图像还支持 Base64（`data:{MIME_type};base64,{base64_data}`），音频/视频不支持 Base64 |
+| `parameters.resolution` | string | 否 | 1080P | 分辨率档位，可选 `720P`、`1080P`，直接影响费用。按档位总像素自动缩放，宽高比尽量与输入素材一致 |
+| `parameters.duration` | integer | 否 | 5 | 视频时长（秒），范围 [2, 15] 整数，直接影响费用。视频续写时为最终总时长（输入片段 + 续写部分），费用按本站配置的计费规则结算 |
+| `parameters.prompt_extend` | boolean | 否 | true | 是否开启 prompt 智能改写，对较短提示词提升明显，但会增加耗时 |
+| `parameters.watermark` | boolean | 否 | false | 是否在视频右下角添加「AI生成」水印 |
+| `parameters.seed` | integer | 否 | 随机 | 随机种子，范围 [0, 2147483647]；相同 seed 也不保证结果完全一致 |
+
+#### media 素材组合规则
+
+`input.media` 仅支持以下组合，非法组合会报错：
+
+| 任务类型 | 合法组合 | 说明 |
+|:---|:---|:---|
+| 首帧生视频 | `first_frame` | 以图片为首帧生成视频，模型自动配音（背景音乐/音效） |
+| 首帧 + 音频驱动 | `first_frame + driving_audio` | 以传入音频驱动画面（口型同步、动作卡点） |
+| 首尾帧生视频 | `first_frame + last_frame` | 生成从首帧到尾帧的过渡视频 |
+| 首尾帧 + 音频驱动 | `first_frame + last_frame + driving_audio` | 首尾帧过渡 + 音频驱动 |
+| 视频续写 | `first_clip`；`first_clip + last_frame` | 在输入视频片段之后续写；可指定尾帧 |
+
+---
+
+### 请求体 — 旧版协议（wan2.6 及更早）
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `model` | string | 是 |  | 模型名称，如 `wan2.6-i2v`、`wan2.6-i2v-flash`、`wan2.2-i2v-plus`、`wanx2.1-i2v-turbo` |
+| `input.prompt` | string | 否 |  | 文本提示词，中英文；wan2.6/wan2.5 系列不超过 1500 字符，wan2.2/wanx2.1 系列不超过 800 字符，超出自动截断。使用 `template` 特效时 prompt 无效 |
+| `input.negative_prompt` | string | 否 |  | 反向提示词，不超过 500 字符 |
+| `input.img_url` | string | 是 |  | 首帧图像地址。支持公网 HTTP(S) URL 或 Base64（`data:{MIME_type};base64,...`） |
+| `input.audio_url` | string | 否 |  | 仅 wan2.6 / wan2.5 系列。音频地址（公网 URL）；传入则用该音频生成视频，不传则模型自动配音 |
+| `input.template` | string | 否 |  | 仅 wan2.2 / wanx2.1 系列。视频特效模板名（如 `flying`）；使用时 `prompt` 被忽略，特效可用性与模型相关 |
+| `parameters.resolution` | string | 否 | 依模型 | 分辨率档位，直接影响费用；宽高比尽量与 `img_url` 一致。各模型取值见下方档位表 |
+| `parameters.duration` | integer | 否 | 依模型 | 视频时长（秒），直接影响费用。各模型取值见下方档位表 |
+| `parameters.prompt_extend` | boolean | 否 | true | 是否开启 prompt 智能改写 |
+| `parameters.shot_type` | string | 否 | single | 仅 wan2.6 系列。`single` 单镜头 / `multi` 多镜头叙事；仅当 `prompt_extend=true` 时生效，优先级 shot_type > prompt |
+| `parameters.audio` | boolean | 否 | true | 仅 `wan2.6-i2v-flash`。是否生成有声视频，有声/无声的费用以本站定价为准；优先级 audio > audio_url：`audio=false` 时即使传入 `audio_url` 也输出无声视频；费用以本站为无声请求配置的价格为准 |
+| `parameters.watermark` | boolean | 否 | false | 是否添加「AI生成」水印 |
+| `parameters.seed` | integer | 否 | 随机 | 随机种子，范围 [0, 2147483647] |
+
+> wan2.2 与 wanx2.1 系列默认生成无声视频。
+
+---
+
+### 输入素材要求
+
+#### 图片（新版 first_frame / last_frame；旧版 img_url）
+
+| 项目 | 要求 |
+|:---|:---|
+| 格式 | JPEG、JPG、PNG（不支持透明通道）、BMP、WEBP |
+| 分辨率 | 宽、高均在 [240, 8000] 像素 |
+| 宽高比 | 1:8 ～ 8:1 |
+| 文件大小 | wan2.7 / wan2.6 / wan2.5：不超过 20MB；wan2.2 / wanx2.1：不超过 10MB |
+| 传入方式 | 公网 HTTP(S) URL，或 Base64（MIME 支持 image/jpeg、image/png、image/bmp、image/webp） |
+
+#### 音频（新版 driving_audio；旧版 audio_url）
+
+| 项目 | wan2.7（driving_audio） | wan2.6 / wan2.5（audio_url） |
+|:---|:---|:---|
+| 格式 | wav、mp3 | wav、mp3 |
+| 时长 | 2～30 秒 | 3～30 秒 |
+| 文件大小 | ≤15MB | ≤15MB |
+| 截断规则 | 音频超过 `duration` 自动截取前 `duration` 秒；不足则超出部分为无声（如音频 3s、视频 5s → 前 3s 有声、后 2s 无声） | 同左 |
+| 语义 | 传入 = 音频驱动（口型同步、动作卡点）；不传 = 自动生成背景音乐/音效 | 传入 = 用该音频生成视频；不传 = 自动配音 |
+| 传入方式 | 公网 HTTP(S) URL（不支持 Base64） | 同左 |
+
+#### 视频（新版 first_clip，视频续写）
+
+| 项目 | 要求 |
+|:---|:---|
+| 格式 | mp4、mov |
+| 时长 | 2～10 秒 |
+| 分辨率 | 宽、高均在 [240, 4096] 像素，宽高比 1:8 ～ 8:1 |
+| 文件大小 | ≤100MB |
+| 续写规则 | 续写上限由 `duration` 控制：如 `duration=15`、输入片段 3s → 续写 12s、输出总长 15s，实际计费以本站模型价格和使用日志为准 |
+
+> 输出视频的宽高比由输入素材（首帧图/首视频片段）决定，结合 resolution 档位总像素自动缩放；视频长宽须为 16 的倍数，故与原图宽高比会有微小偏差。
+
+---
+
+### 各模型分辨率与时长档位
+
+| 模型 | resolution 可选值 | resolution 默认 | duration 取值（秒） | duration 默认 |
+|:---|:---|:---|:---|:---|
+| `wan2.7-i2v` | 720P、1080P | 1080P | [2, 15] 整数 | 5 |
+| `wan2.6-i2v` | 720P、1080P | 1080P | [2, 15] 整数 | 5 |
+| `wan2.6-i2v-flash` | 720P、1080P | 1080P | [2, 15] 整数 | 5 |
+| `wan2.5-i2v-preview` | 480P、720P、1080P | 1080P | 5、10 | 5 |
+| `wan2.2-i2v-flash` | 480P、720P、1080P | 720P | 固定 5，不可修改 | 5 |
+| `wan2.2-i2v-plus` | 480P、1080P | 1080P | 固定 5，不可修改 | 5 |
+| `wanx2.1-i2v-turbo` | 480P、720P | 720P | 3、4、5 | 5 |
+| `wanx2.1-i2v-plus` | 720P | 720P | 固定 5，不可修改 | 5 |
+
+> `resolution`、`duration` 可能参与本站计价；`wan2.6-i2v-flash` 有声和无声请求的费用均以本站该型号的定价为准。
+
+---
+
+### 请求示例
+
+#### 示例一：首帧生视频（wan2.7）
+
+```bash
+curl --request POST \
+  --url 'https://video.pinducloud.com.cn/ali/api/v1/services/aigc/video-generation/video-synthesis' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model": "wan2.7-i2v",
+    "input": {
+      "prompt": "镜头缓缓向前推进，光影流动",
+      "media": [
+        {
+          "type": "first_frame",
+          "url": "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20260424/mvzfud/hh-v2v-girl.jpg"
+        }
+      ]
+    },
+    "parameters": {"resolution": "1080P", "duration": 5}
+  }'
+```
+
+#### 示例二：首尾帧生视频（wan2.7）
+
+```bash
+curl --request POST \
+  --url 'https://video.pinducloud.com.cn/ali/api/v1/services/aigc/video-generation/video-synthesis' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model": "wan2.7-i2v",
+    "input": {
+      "prompt": "花瓣在风中飘落，从盛开到凋谢",
+      "media": [
+        {
+          "type": "first_frame",
+          "url": "https://wanx.alicdn.com/material/20250318/first_frame.png"
+        },
+        {
+          "type": "last_frame",
+          "url": "https://wanx.alicdn.com/material/20250318/last_frame.png"
+        }
+      ]
+    },
+    "parameters": {"resolution": "720P", "duration": 5}
+  }'
+```
+
+#### 示例三：首帧 + 音频驱动（wan2.7）
+
+```bash
+curl --request POST \
+  --url 'https://video.pinducloud.com.cn/ali/api/v1/services/aigc/video-generation/video-synthesis' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model": "wan2.7-i2v",
+    "input": {
+      "prompt": "人物随音乐节奏摇摆，表情生动",
+      "media": [
+        {
+          "type": "first_frame",
+          "url": "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20260424/mvzfud/hh-v2v-girl.jpg"
+        },
+        {
+          "type": "driving_audio",
+          "url": "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250825/iaqpio/input_audio.MP3"
+        }
+      ]
+    },
+    "parameters": {"resolution": "1080P", "duration": 5}
+  }'
+```
+
+#### 示例四：旧版协议（wan2.6-i2v）
+
+```bash
+curl --request POST \
+  --url 'https://video.pinducloud.com.cn/ali/api/v1/services/aigc/video-generation/video-synthesis' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model": "wan2.6-i2v",
+    "input": {
+      "img_url": "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20260424/mvzfud/hh-v2v-girl.jpg",
+      "prompt": "人物缓缓转身，目光望向远方"
+    },
+    "parameters": {"resolution": "720P", "duration": 5}
+  }'
+```
+
+---
+
+### 响应示例
+
+```jsonc
+{
+  "output": {
+    "task_status": "PENDING",
+    "task_id": "0385dc79-5ff8-4d82-bcb6-xxxxxx"
+  },
+  "request_id": "4909100c-7b5a-9f92-bfe5-xxxxxx"
+}
+```
+
+#### 响应字段
+
+| 字段 | 类型 | 说明 |
+|:---|:---|:---|
+| `output.task_id` | string | 本站公开任务 ID，用于查询本站保留的任务记录。请勿重复创建任务，轮询即可 |
+| `output.task_status` | string | 任务状态，创建成功时为 `PENDING`，枚举见[概述](/docs/video/wan3) |
+| `request_id` | string | 请求唯一标识，用于溯源排查 |
+| `code` / `message` | string | 仅创建失败时返回错误码与详情（如 `InvalidApiKey`、`InvalidParameter`） |
+
+---
+
+### 查询任务
+
+创建任务后，通过 `task_id` 轮询任务状态，`SUCCEEDED` 后从 `output.video_url` 获取视频地址（有效期以实际返回地址为准）：
+
+```text
+GET https://video.pinducloud.com.cn/ali/api/v1/tasks/{task_id}
+```
+
+详见 [09-查询任务](/docs/video/wan/query)。

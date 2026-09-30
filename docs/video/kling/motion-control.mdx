@@ -1,0 +1,260 @@
+---
+title: "动作控制"
+sidebar_label: "05-动作控制"
+---
+
+# 动作控制
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+POST 创建或管理请求可通过 `model_name` 选择账号已开通的可灵型号；未传时读取 `model`，两者都省略时使用 `kling-v1`。即使接口参数表未列出模型字段，也需确保账号已开通所选型号及对应能力。
+
+### 创建任务
+
+```text
+POST https://video.pinducloud.com.cn/kling/v1/videos/motion-control
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 是 | application/json | 数据交换格式 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求体
+
+**参数格式说明**
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `model_name` | string | 否 | kling-v2-6 | 模型名称<br />可选值: `kling-v2-6`, `kling-v3` |
+| `prompt` | string | 否 |  | 文本提示词，可包含正向描述和负向描述<br />- 可通过提示词为画面增加元素、实现运镜效果等，详见[可灵「动作控制」使用指南](https://docs.qingque.cn/d/home/eZQAl5y8xNSkr0iYUS8-bpGvP?identityId=2Cn18n4EIHT#section=h.xtmfpd68o18)<br />- 不能超过 2500 个字符 |
+| `image_url` | string | 是 |  | 参考图像，生成视频中的人物、背景等元素均以参考图为准<br />- 视频内容需满足以下要求：<br />  - 人物比例尽量与参考动作比例一致，尽量避免全身动作驱动半身人物进行生成<br />  - 人物需要露出清晰的上半身或全身的肢体及头部，避免遮挡<br />  - 画面中人物避免存在极端朝向，比如倒立、平卧等。人物占画面比例不得太低<br />  - 支持真实/风格化的角色（包括人物/类人动物/部分纯动物/部分类人肢体比例的角色）通过<br />- 支持传入图片 Base64 编码或图片 URL（确保可访问）<br />- 注意：若您使用 Base64 方式，请不要在 Base64 编码字符串前添加任何前缀（如 `data:image/png;base64,`），直接传递 Base64 编码后的字符串即可。<br />- 图片格式支持 .jpg / .jpeg / .png<br />- 图片文件大小不能超过 10MB，图片宽高尺寸介于 300px～65536px，图片宽高比介于 1:2.5 ~ 2.5:1 之间 |
+| `video_url` | string | 是 |  | 参考视频的获取链接。生成视频中的人物动作与参考视频一致。<br />- 视频内容需满足以下要求：<br />  - 人物需要露出清晰的上半身或全身的全部肢体及头部，避免遮挡<br />  - 建议上传 1 人动作视频，2 人及以上会取画面占比最大的人物动作进行生成<br />  - 推荐使用真人动作，部分风格化的人物/类人肢体比例可以通过<br />  - 动作视频一镜到底，角色始终出现在画面中，避免切镜、运镜等。否则会被截取<br />  - 动作避免过快，相对平稳的动作生成效果更佳<br />- 视频文件支持 .mp4/.mov，文件大小不超过 100MB，仅支持长宽的边长均位于 340px~3850px 之间，上述校验不通过会返回错误码等信息<br />- 视频时长下限不短于 3 秒，时长上限与人物朝向参考（character_orientation）有关：<br />  - 当人物朝向与视频中人物一致时，视频时长最长可达 30 秒<br />  - 当人物朝向与图片中人物一致时，视频时长最长可达 10 秒<br />- 如果您的动作难度比较高、速度比较快，有一定概率生成不足上传视频时长的结果，因为模型只能提取有效动作时长进行生成，最短提取出 3s 可用连续动作即可生成。请注意，因此消耗的积分将无法退还，建议适当调整动作难度与速度<br />- 系统会校验视频内容，如有问题会返回错误码等信息 |
+| `element_list` | array | 否 |  | 主体参考列表，基于主体库中主体的 ID 配置<br />- 用 key:value 承载，如下：<br />- 引用主体时，生成的视频暂时只能参考视频中的人物朝向<br />- 暂时仅支持引入1个主体 |
+|   `element_id` | long | 是 |  | 主体库中主体的 ID |
+| `keep_original_sound` | string | 否 | yes | 可选择是否保留视频原声<br />可选值: `yes`, `no` |
+| `character_orientation` | string | 是 |  | 生成视频中人物的朝向，可选择与图片一致或与视频一致<br />可选值: `image`, `video`<br />- image：与图片中人物朝向一致；此时参考视频时长不得超过 10 秒<br />- video：与视频中人物朝向一致；此时参考视频时长不得超过 30 秒<br />- 引用主体时，生成的视频暂时只能参考视频中的人物朝向 |
+| `mode` | string | 是 |  | 生成视频的模式<br />可选值: `std`, `pro`<br />- std：标准模式（标准），基础模式，性价比高<br />- pro：专家模式（高品质），高表现模式，生成视频质量更佳<br />不同模型版本、视频模式支持范围不同，请按所选型号的参数范围使用 |
+| `watermark_info` | object | 否 |  | 是否同时生成含水印的结果<br />- 通过enabled参数定义，具体格式如下：<br />- true 为生成，false 为不生成<br />- 暂不支持自定义水印 |
+| `callback_url` | string | 否 |  | 本次任务结果回调地址，发送给任务服务；是否投递及消息格式以实际服务行为为准<br />- 查询接口用于确认最终任务状态，请保留创建响应中的任务 ID |
+| `external_task_id` | string | 否 |  | 自定义任务 ID<br />- 用户自定义任务 ID，传入不会覆盖系统生成的任务 ID，本站任务查询仍使用创建响应返回的公开任务 ID<br />- 请注意，单用户下需要保证唯一性 |
+
+
+**`image_url`**
+
+```plaintext
+iVBORw0KGgoAAAANSUhEUgAAAAUA...
+```
+
+```plaintext
+data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA...
+```
+
+**`element_list`**
+
+```jsonc
+{
+"element_list":[
+  { "element_id": 829836802793406551 }
+]
+}
+```
+
+**`watermark_info`**
+
+```jsonc
+{
+"watermark_info": { "enabled": true }
+}
+```
+
+
+#### 请求示例
+
+```bash
+curl --request POST \
+  --url https://video.pinducloud.com.cn/kling/v1/videos/motion-control \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json; charset=utf-8' \
+  --data-raw '{
+    "model_name": "kling-v2-6",
+    "image_url": "https://p2-kling.klingai.com/kcdn/cdn-kcdn112452/kling-qa-test/multi-3.ng.png",
+    "prompt": "女孩穿着灰色宽松T恤和牛仔短裤",
+    "video_url": "https://p2-kling.klingai.com/kcdn/cdn-kcdn112452/kling-qa-test/dance.mp4",
+    "keep_original_sound": "yes",
+    "character_orientation": "image",
+    "mode": "pro",
+    "callback_url": "",
+    "external_task_id": "xxx"
+  }'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, // 错误码；错误详情见 message 字段
+  "message": "string", // 错误信息
+  "request_id": "string", // 请求ID，系统生成，用于跟踪请求、排查问题
+  "data": {
+    "task_id": "string", // 任务ID，系统生成
+    "task_info": { //任务创建时的参数信息
+      "external_task_id": "string" //客户自定义任务ID
+    },
+    "task_status": "string", // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+    "created_at": 1722769557708, // 任务创建时间，Unix时间戳、单位ms
+    "updated_at": 1722769557708 //任务更新时间，Unix时间戳、单位ms
+  }
+}
+```
+
+---
+
+### 查询任务（单个）
+
+```text
+GET https://video.pinducloud.com.cn/kling/v1/videos/motion-control/{id}
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 否 | application/json | GET 查询不携带 JSON 请求体，可省略此头 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求示例
+
+```bash
+curl --request GET \
+  --url https://video.pinducloud.com.cn/kling/v1/videos/motion-control/{task_id} \
+  --header 'Authorization: Bearer sk-your-pinducloud-token'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, // 错误码；错误详情见 message 字段
+  "message": "string", // 错误信息
+  "request_id": "string", // 请求ID，系统生成，用于跟踪请求、排查问题
+  "data": {
+    "task_id": "string", // 任务ID，系统生成
+    "task_status": "string", // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+    "task_status_msg": "string", // 任务状态信息，当任务失败时展示失败原因（如触发平台的内容风控等）
+    "task_info": { //任务创建时的参数信息
+      "external_task_id": "string" //客户自定义任务ID
+    },
+    "task_result": {
+      "videos": [
+        {
+          "id": "string", // 生成的视频ID；全局唯一
+          "url": "string", // 生成视频的URL，防盗链格式（请注意，为下载地址可能有有效期，请及时转存）
+          "watermark_url": "string", // 含水印视频下载URL，防盗链格式
+          "duration": "string" //视频总时长，单位s
+        }
+      ]
+    },
+    "watermark_info": {
+      "enabled": true
+    },
+    "final_unit_deduction": "string", // 任务服务原生积分信息；本站实际扣费以使用日志为准
+    "created_at": 1722769557708, // 任务创建时间，Unix时间戳、单位ms
+    "updated_at": 1722769557708 //任务更新时间，Unix时间戳、单位ms
+  }
+}
+```
+
+---
+
+### 查询任务（列表）
+
+列表仅返回当前用户在该接口创建的任务。响应使用本站的 `items` 分页结构；每项 `data` 保留原生任务字段，`task_id` 为本站公开任务 ID。外层 `created_at` 使用 Unix 秒，原生 `data` 内的时间单位见字段注释。
+
+#### 查询参数
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `pageNum` | integer | 否 | 1 | 页码，范围 1–500 |
+| `pageSize` | integer | 否 | 20 | 每页数量，范围 1–500 |
+| `filter.model` | string | 否 |  | 按原版模型名称筛选 |
+| `filter.task_ids` | string | 否 |  | 按公开任务 ID 筛选；重复传入参数指定多个 ID，最多 100 个 |
+
+
+```text
+GET https://video.pinducloud.com.cn/kling/v1/videos/motion-control
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 否 | application/json | GET 查询不携带 JSON 请求体，可省略此头 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求示例
+
+```bash
+curl --request GET \
+  --url 'https://video.pinducloud.com.cn/kling/v1/videos/motion-control?pageNum=1&pageSize=30' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "items": [{
+    "task_id": "task-example",
+    "platform": "kling",
+    "action": "motion_control",
+    "status": "SUCCESS",
+    "progress": "100%",
+    "fail_reason": "",
+    "created_at": 1722769557,
+    "data": {
+      "code": 0,
+      // 错误码；错误详情见 message 字段
+      "message": "string",
+      // 错误信息
+      "request_id": "string",
+      // 请求ID，系统生成，用于跟踪请求、排查问题
+      "data": {
+        "task_id": "task-example",
+        // 任务ID，系统生成
+        "task_status": "succeed",
+        // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+        "task_status_msg": "string",
+        // 任务状态信息，当任务失败时展示失败原因（如触发平台的内容风控等）
+        "task_info": {
+          //任务创建时的参数信息
+          "external_task_id": "string" //客户自定义任务ID
+        },
+        "task_result": {
+          "videos": [{
+            "id": "string",
+            // 生成的视频ID；全局唯一
+            "url": "string",
+            // 生成视频的URL，防盗链格式（请注意，为下载地址可能有有效期，请及时转存）
+            "watermark_url": "string",
+            // 含水印视频下载URL，防盗链格式
+            "duration": "string" //视频总时长，单位s
+          }]
+        },
+        "watermark_info": {
+          "enabled": true
+        },
+        "final_unit_deduction": "string",
+        // 任务服务原生积分信息；本站实际扣费以使用日志为准
+        "created_at": 1722769557708,
+        // 任务创建时间，Unix时间戳、单位ms
+        "updated_at": 1722769557708 //任务更新时间，Unix时间戳、单位ms
+      }
+    }
+  }],
+  "total": 1,
+  "page_num": 1,
+  "page_size": 30
+}
+```

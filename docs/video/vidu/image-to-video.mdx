@@ -1,0 +1,113 @@
+---
+title: "图生视频"
+sidebar_label: "02-图生视频"
+---
+
+# 图生视频
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+以首帧图片驱动生成视频。
+
+```text
+POST https://video.pinducloud.com.cn/vidu/ent/v2/img2video
+```
+
+---
+
+## 请求参数
+
+### 请求头
+
+| 头部 | 必填 | 说明 |
+|:---|:---:|:---|
+| `Content-Type` | 是 | `application/json` |
+| `Authorization` | 是 | `Bearer sk-your-pinducloud-token` |
+
+### 请求体
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `model` | String | 是 |  | 模型名称<br />可选值：`viduq3-turbo`、`viduq3-pro`、`viduq3-pro-fast`、`viduq2-pro-fast`、`viduq2-pro`、`viduq2-turbo`、`viduq1`、`viduq1-classic`、`vidu2.0`<br />- `viduq3-pro-fast`：高效生成优质音视频内容，生成速度更快，性价比高<br />- `viduq3-turbo`：对比 viduq3-pro，生成速度更快<br />- `viduq3-pro`：高效生成优质音视频内容，效果更好<br />- `viduq2-pro-fast`：价格触底、效果稳定，生成速度较 viduq2-turbo 提高 2–3 倍<br />- `viduq2-pro`：效果好，细节丰富<br />- `viduq2-turbo`：效果好，生成快<br />- `viduq1`：画面清晰，平滑转场，运镜稳定<br />- `viduq1-classic`：画面清晰，转场、运镜更丰富<br />- `vidu2.0`：生成速度快 |
+| `images` | Array[String] | 是 |  | 首帧图像。模型以此图片为首帧画面生成视频。<br />- 支持图片 Base64 编码或图片 URL（确保可访问）<br />- 仅支持 1 张图<br />- 支持 png、jpeg、jpg、webp 格式<br />- 图片宽高比需在 1:4 至 4:1 之间<br />- 图片大小不超过 50 MB<br />- POST body 不超过 20MB，Base64 须包含内容类型前缀，如 `data:image/png;base64,{base64_encode}` |
+| `prompt` | String | 否 |  | 文本提示词。字符长度不超过 5000 个字符。<br />注：若使用 `is_rec` 推荐提示词参数，模型将忽略此提示词 |
+| `audio` | Bool | 否 | false | 是否使用音视频直出能力（q3-pro、q3-turbo、q3-pro-fast 默认为 `true`）<br />- `true`：输出带台词及背景音的视频<br />- `false`：输出静音视频<br />注 1：该参数为 `true` 时，`voice_id` 参数才生效<br />注 2：该参数为 `true` 时，仅 q3 模型支持错峰 |
+| `audio_type` | String | 否 | all | 音频类型，`audio` 为 `true` 时生效<br />- `all`：音效+人声<br />- `speech_only`：仅人声<br />- `sound_effect_only`：仅音效<br />注：目前仅支持 q2、q1、2.0 系列模型的音频拆分 |
+| `voice_id` | String | 否 |  | 音色 ID，q3 系列模型不生效。为空时系统自动推荐。 |
+| `is_rec` | Bool | 否 |  | 是否使用推荐提示词<br />- `true`：系统自动推荐提示词并使用其生成视频<br />- `false`：根据输入的 prompt 生成视频<br />注：启用后的本站费用以实际使用日志为准 |
+| `bgm` | Bool | 否 | false | 是否添加背景音乐<br />注：q2 模型 duration 为 9s 或 10s 时不生效；q3 系列不生效 |
+| `duration` | Int | 否 |  | 视频时长（秒）。默认值依模型而定：<br />- `viduq3-pro`、`viduq3-turbo`、`viduq3-pro-fast`：默认 5，可选 1–16<br />- `viduq2-pro-fast`、`viduq2-pro`、`viduq2-turbo`：默认 5，可选 1–10<br />- `viduq1`、`viduq1-classic`：默认 5，可选 5<br />- `vidu2.0`：默认 4，可选 4、8 |
+| `seed` | Int | 否 |  | 随机种子。不传或传 0 时使用随机数。 |
+| `resolution` | String | 否 |  | 分辨率。默认值依模型和时长而定：<br />- `viduq3-pro-fast`（1–16s）：默认 720p，可选 720p、1080p<br />- `viduq3-pro`、`viduq3-turbo`（1–16s）：默认 720p，可选 540p、720p、1080p<br />- `viduq2-pro-fast`（1–10s）：默认 720p，可选 720p、1080p<br />- `viduq2-pro`、`viduq2-turbo`（1–10s）：默认 720p，可选 540p、720p、1080p<br />- `viduq1`、`viduq1-classic`（5s）：默认 1080p，可选 1080p<br />- `vidu2.0`（4s）：默认 360p，可选 360p、720p、1080p<br />- `vidu2.0`（8s）：默认 720p，可选 720p |
+| `movement_amplitude` | String | 否 | auto | 运动幅度。可选值：`auto`、`small`、`medium`、`large`<br />注：q2、q3 系列模型该参数不生效 |
+| `off_peak` | Bool | 否 | false | 错峰模式<br />注：除 q3 外的其他音视频直出功能不支持错峰模式 |
+| `watermark` | Bool | 否 | false | 是否添加水印。默认不加。 |
+| `wm_position` | Int | 否 | 3 | 水印位置<br />`1`：左上角，`2`：右上角，`3`：右下角，`4`：左下角 |
+| `wm_url` | String | 否 |  | 自定义水印图片 URL。不传时使用默认水印。 |
+| `payload` | String | 否 |  | 透传参数。最多 1048576 个字符。 |
+| `meta_data` | String | 否 |  | 元数据标识，JSON 格式字符串，透传字段。 |
+| `callback_url` | String | 否 |  | 回调地址。任务状态变化时以 POST 方式发送回调请求。 |
+
+---
+
+## 请求示例
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer sk-your-pinducloud-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "viduq3-pro",
+    "images": ["https://example.com/image.png"],
+    "prompt": "The astronaut waved and the camera moved up.",
+    "audio": true,
+    "duration": 5,
+    "resolution": "1080p"
+  }' \
+  https://video.pinducloud.com.cn/vidu/ent/v2/img2video
+```
+
+---
+
+## 响应参数
+
+| 字段 | 类型 | 说明 |
+|:---|:---|:---|
+| `task_id` | String | 任务 ID |
+| `state` | String | 处理状态：`created`、`queueing`、`processing`、`success`、`failed` |
+| `model` | String | 本次调用的模型名称 |
+| `prompt` | String | 本次调用的提示词 |
+| `images` | Array[String] | 本次调用的图像参数 |
+| `duration` | Int | 视频时长 |
+| `audio` | Bool | 是否使用音视频直出 |
+| `audio_type` | String | 音频类型 |
+| `seed` | Int | 随机种子 |
+| `resolution` | String | 分辨率 |
+| `movement_amplitude` | String | 运动幅度 |
+| `payload` | String | 透传参数 |
+| `off_peak` | Bool | 是否使用错峰模式 |
+| `credits` | Int | 任务服务原生积分信息；本站实际扣费以使用日志为准 |
+| `watermark` | Bool | 是否使用水印 |
+| `created_at` | String | 任务创建时间 |
+
+---
+
+## 响应示例
+
+```jsonc
+{
+  "task_id": "{task_id}",
+  "state": "created",
+  "model": "viduq3-pro",
+  "images": ["https://example.com/image.png"],
+  "prompt": "The astronaut waved and the camera moved up.",
+  "duration": 5,
+  "seed": 123456,
+  "resolution": "1080p",
+  "movement_amplitude": "auto",
+  "payload": "",
+  "off_peak": false,
+  "credits": 8,
+  "created_at": "2025-01-01T15:41:31.968916Z"
+}
+```

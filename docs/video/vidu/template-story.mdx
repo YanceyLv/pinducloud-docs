@@ -1,0 +1,80 @@
+---
+title: "模板成片"
+sidebar_label: "07-模板成片"
+---
+
+# 模板成片
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+基于预设故事模板一键生成成片。
+
+```text
+POST https://video.pinducloud.com.cn/vidu/ent/v2/template-story
+```
+
+---
+
+## 请求参数
+
+### 请求头
+
+| 头部 | 必填 | 说明 |
+|:---|:---:|:---|
+| `Content-Type` | 是 | `application/json` |
+| `Authorization` | 是 | `Bearer sk-your-pinducloud-token` |
+
+### 请求体
+
+| 参数 | 类型 | 必填 | 说明 |
+|:---|:---|:---:|:---|
+| `model` | String | 可选 | 用于选择账号已开通的 Vidu 型号；省略时默认 `viduq2`。模板效果由 `template` 或 `story` 决定。 |
+| `story` | String | 是 | 模板成片参数。可选值：`love_story`、`workday_feels`、`monkey_king`、`pigsy`、`monk_tang`、`one_shot` |
+| `images` | Array[String] | 是 | 图像。模型以此图片来生成视频。<br />支持图片 Base64 编码或 URL，支持 png、jpeg、jpg、webp 格式。<br />图片大小不超过 50 MB，POST body 不超过 20MB。<br />注：`one_shot` 视频比例与输入首图的比例相同 |
+| `payload` | String | 可选 | 透传参数。最多 1048576 个字符。 |
+| `callback_url` | String | 可选 | 回调地址。 |
+
+---
+
+## 请求示例
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer sk-your-pinducloud-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "story": "love_story",
+    "images": ["https://example.com/photo.png"]
+  }' \
+  https://video.pinducloud.com.cn/vidu/ent/v2/template-story
+```
+
+---
+
+## 响应参数
+
+| 字段 | 类型 | 说明 |
+|:---|:---|:---|
+| `task_id` | String | 任务 ID |
+| `state` | String | 处理状态：`created`、`queueing`、`processing`、`success`、`failed` |
+| `story` | String | 本次调用的模板成片参数 |
+| `images` | Array[String] | 图像参数 |
+| `payload` | String | 透传参数 |
+| `credits` | Int | 任务服务原生积分信息；本站实际扣费以使用日志为准 |
+| `created_at` | String | 任务创建时间 |
+
+---
+
+## 响应示例
+
+```jsonc
+{
+  "task_id": "{task_id}",
+  "state": "created",
+  "story": "love_story",
+  "images": ["https://example.com/photo.png"],
+  "payload": "",
+  "credits": 20,
+  "created_at": "2025-01-01T15:41:31.968916Z"
+}
+```

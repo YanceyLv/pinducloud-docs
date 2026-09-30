@@ -1,0 +1,144 @@
+---
+title: "首尾帧生视频"
+sidebar_label: "05-首尾帧生视频"
+---
+
+# 首尾帧生视频
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+输入首帧图像与尾帧图像，配合文本提示词，生成一段两帧之间平滑过渡的视频（kf2v 系列）。输出视频固定 **5 秒、无声**，MP4（H.264 编码），数量固定 1 个。任务耗时通常 1–5 分钟，仅支持异步调用（创建任务 → 轮询查询）。
+
+---
+
+## 支持的模型
+
+| 模型 | 分辨率档位 | 默认分辨率 | 时长 | 特效模板 | 说明 |
+|:---|:---|:---|:---|:---|:---|
+| `wan2.2-kf2v-flash` | 480P / 720P / 1080P | 720P | 固定 5 秒 | — | 2.2 版，高性价比；查询响应 `usage.SR` 返回分辨率档位 |
+| `wanx2.1-kf2v-plus` | 仅 720P | 720P | 固定 5 秒 | 支持（如 `mech1`、`hanfu-1`） | 2.1 版；查询响应 `usage.video_ratio` 固定 `standard` |
+
+> 分辨率与时长直接影响费用：可用规格按下表选择；本站按配置的模型价格结算，视频任务失败后退还预扣额度。
+
+---
+
+### 创建任务
+
+> **注意**：首尾帧生视频的提交端点为 `image2video`，与文生视频 / 图生视频的 `video-generation` 端点不同。
+
+```text
+POST https://video.pinducloud.com.cn/ali/api/v1/services/aigc/image2video/video-synthesis
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 是 | application/json | 数据交换格式 |
+| `Authorization` | string | 是 |  | 鉴权信息，`Bearer sk-your-pinducloud-token` |
+
+> 官方要求的 `X-DashScope-Async: enable` 头由平台自动补充，调用时**无需携带**；携带亦兼容。
+
+#### 请求体
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `model` | string | 是 |  | 模型名称，可选：`wan2.2-kf2v-flash`、`wanx2.1-kf2v-plus` |
+| `input` | object | 是 |  | 输入基本信息 |
+| `input.first_frame_url` | string | 是 |  | 首帧图像。支持：公网 URL（HTTP/HTTPS，推荐）、Base64（`data:{MIME_type};base64,{base64_data}`）。**输出视频宽高比以此图像为基准**，图片要求见下节 |
+| `input.last_frame_url` | string | 否 |  | 尾帧图像，输入格式同上。常规首尾帧场景**实际必传**；使用 `template` 特效时忽略。分辨率可与首帧不同，无需强制对齐 |
+| `input.prompt` | string | 否 |  | 文本提示词，中英文，≤800 字符，超出自动截断。首尾帧主体/场景变化较大时，建议描写变化过程（运镜如"镜头向左移动"、主体运动如"人向前奔跑"） |
+| `input.negative_prompt` | string | 否 |  | 反向提示词，描述不希望出现的内容，中英文，≤500 字符，超出自动截断 |
+| `input.template` | string | 否 |  | 视频特效模板名（如 `mech1` 机械觉醒、`hanfu-1` 唐韵翩然），支持模型：`wanx2.1-kf2v-plus`。使用时仅需传 `first_frame_url`，`prompt` 与 `last_frame_url` 被忽略；仅传尾帧 + template 会报错 |
+| `parameters` | object | 否 |  | 视频处理参数 |
+| `parameters.resolution` | string | 否 | 720P | 分辨率档位。flash：`480P` / `720P` / `1080P`；plus：仅 `720P`。仅调整总像素清晰度，不改变宽高比（宽高比与首帧一致）。直接影响费用 |
+| `parameters.duration` | integer | 否 | 5 | 视频时长（秒），固定 5，不支持修改 |
+| `parameters.prompt_extend` | bool | 否 | true | 是否开启提示词智能改写。对短提示词提升明显，但会增加耗时 |
+| `parameters.seed` | integer | 否 | 随机 | 随机种子，范围 [0, 2147483647]。固定 seed 可提升结果可复现性，但不保证完全一致 |
+| `parameters.watermark` | bool | 否 | false | 是否添加水印（视频右下角"AI生成"标识） |
+
+#### 输入图片要求
+
+| 项 | 要求 |
+|:---|:---|
+| 数量 | 1 张首帧 + 1 张尾帧（特效模式仅首帧） |
+| 格式 | JPEG、JPG、PNG（不支持透明通道）、BMP、WEBP |
+| 分辨率 | 宽和高均在 [240, 8000] 像素 |
+| 文件大小 | ≤10MB |
+| 首尾帧关系 | 尾帧分辨率可与首帧不同，无需强制对齐；**输出视频宽高比以首帧为基准** |
+
+> **输出尺寸规则**：模型以首帧宽高比为基准，结合 `resolution` 档位的总像素计算最接近的合法分辨率；视频宽高必须为 16 的倍数，因此会有微调，无法保证严格比例。例：首帧 750×1000（3:4）+ 720P → 实际输出约 816×1104。
+
+#### 请求示例（wan2.2-kf2v-flash）
+
+```bash
+curl --request POST \
+  --url 'https://video.pinducloud.com.cn/ali/api/v1/services/aigc/image2video/video-synthesis' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model": "wan2.2-kf2v-flash",
+    "input": {
+      "first_frame_url": "https://wanx.alicdn.com/material/20250318/first_frame.png",
+      "last_frame_url": "https://wanx.alicdn.com/material/20250318/last_frame.png",
+      "prompt": "写实风格，一只黑色小猫好奇地看向天空，镜头从平视逐渐上升"
+    },
+    "parameters": {
+      "resolution": "480P",
+      "prompt_extend": true
+    }
+  }'
+```
+
+#### 请求示例（wanx2.1-kf2v-plus）
+
+```bash
+curl --request POST \
+  --url 'https://video.pinducloud.com.cn/ali/api/v1/services/aigc/image2video/video-synthesis' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model": "wanx2.1-kf2v-plus",
+    "input": {
+      "first_frame_url": "https://wanx.alicdn.com/material/20250318/first_frame.png",
+      "last_frame_url": "https://wanx.alicdn.com/material/20250318/last_frame.png",
+      "prompt": "花瓣在风中飘落，镜头由近到远"
+    },
+    "parameters": {
+      "prompt_extend": true
+    }
+  }'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "output": {
+    "task_status": "PENDING",
+    "task_id": "0385dc79-5ff8-4d82-bcb6-xxxxxx"
+  },
+  "request_id": "4909100c-7b5a-9f92-bfe5-xxxxxx"
+}
+```
+
+#### 响应字段
+
+| 字段 | 类型 | 说明 |
+|:---|:---|:---|
+| `output.task_id` | string | 本站公开任务 ID，用于查询本站保留的任务记录 |
+| `output.task_status` | string | 任务初始状态，通常为 `PENDING` |
+| `request_id` | string | 请求唯一标识 |
+| `code` / `message` | string | 仅创建失败时返回，错误码与详情（如 `InvalidParameter` 图片尺寸不符） |
+
+---
+
+### 查询任务
+
+通过创建任务返回的 `task_id` 轮询任务状态，`SUCCEEDED` 后从 `output.video_url` 获取视频地址（有效期以实际返回地址为准）。
+
+```text
+GET https://video.pinducloud.com.cn/ali/api/v1/tasks/{task_id}
+```
+
+详见 [09-查询任务](/docs/video/wan/query)。

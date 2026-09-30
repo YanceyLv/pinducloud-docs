@@ -1,0 +1,184 @@
+---
+title: "Omni 视频生成"
+sidebar_label: "03-Omni视频生成"
+---
+
+# Omni 视频生成
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+Omni 为多模态全能视频生成能力：一个端点同时支持文生视频、图生视频（首帧/首尾帧/参考图）、视频特征参考、视频编辑与主体引用，通过 `contents` 数组自由组合输入素材。
+
+### 创建任务
+
+```text
+POST https://video.pinducloud.com.cn/kling/omni-video/{model}
+```
+
+`{model}` 为路径参数，指定使用的模型版本：
+
+| 模型 | 说明 |
+|:---|:---|
+| `kling-3.0-omni` | 3.0 全能版，支持多镜头、原生音频、最高 4K，参考视频最长 15.5 秒 |
+| `kling-o1` | 多模态视频模型，参考视频最长 10 秒 |
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 是 | application/json | 数据交换格式 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求体
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `contents` | array | 是 |  | 参考素材合集，数组元素为不同类型的素材对象，见下表 |
+| `settings` | object | 否 |  | 输出配置相关参数，见下表 |
+| `options` | object | 否 |  | 通用配置，见下表 |
+
+**`contents` 数组元素类型**
+
+| type | 字段 | 说明 |
+|:---|:---|:---|
+| `prompt` | `text`（必填） | 文本提示词<br />- `kling-3.0-omni`：不超过 3072 字符，建议不超过 2500 字符；支持多镜头格式（`镜头 n, m, words;`，最多 6 分镜）<br />- `kling-o1`：不超过 2500 字符<br />- 可通过 `@xxx` 格式指定某张图片、某个主体、某个视频（如 `@image_1`、`@Zhang`、`@video_1`）；避免主体名称互相包含、避免与 prompt 内容雷同 |
+| `first_frame` | `url`（必填）、`id`（选填） | 首帧图，支持 URL 或 base64 |
+| `last_frame` | `url`（必填）、`id`（选填） | 尾帧图；支持仅首帧和首尾帧，不支持仅尾帧 |
+| `refer_image` | `url`（必填）、`id`（选填） | 元素参考图 |
+| `feature_video` | `url`（必填，仅支持 URL）、`id`（选填） | 特征参考视频，用于参考画面特征生成 |
+| `base_video` | `url`（必填，仅支持 URL）、`id`（选填） | 待编辑视频，用于视频编辑场景 |
+| `element` | `element_id`（必填）、`id`（必填） | 主体素材。`element_id` 由系统生成（通过主体管理相关 API 获取）；`id` 用于在 prompt 中以 `@` 格式指定，同任务中不得重复 |
+
+**图片类素材约束**（`first_frame` / `last_frame` / `refer_image`）
+
+- 格式 .jpg/.jpeg/.png；不超过 50MB；宽高不小于 300px；宽高比 1:2.5 ~ 2.5:1。
+- 图片数量上限与主体、参考视频联动：
+
+| 场景 | kling-3.0-omni | kling-o1 |
+|:---|:---|:---|
+| 无参考视频，仅多图主体 | 参考图片+多图主体之和 ≤ 7 | 参考图片+主体之和 ≤ 7 |
+| 无参考视频，视频角色主体与多图主体同时存在 | 参考图片+多图主体之和 ≤ 4 | 不适用（o1 不支持视频角色主体） |
+| 有参考视频 | 参考图片+多图主体之和 ≤ 4；不同时支持视频角色主体和参考图片 | 参考图片+主体之和 ≤ 4 |
+| 使用首尾帧 | — | 不支持添加更多参考图 |
+
+**视频类素材约束**（`feature_video` / `base_video`）
+
+| 约束 | kling-3.0-omni | kling-o1 |
+|:---|:---|:---|
+| 格式/大小 | .mp4/.mov，不超过 200MB | .mp4/.mov，不超过 200MB |
+| 时长 | 3 秒（含）~ 15.5 秒（含） | 3 秒（含）~ 10 秒（含） |
+| 尺寸 | 宽高 700px ~ 4553px（含），像素总面积不超过 8294400，宽高比 0.4 ~ 2 | 宽高 700px ~ 2160px（含） |
+| 帧率 | 24fps ~ 60fps（生成视频帧率为 24fps） | 同左 |
+| 数量 | 最多 1 段参考视频；添加参考视频后最多添加 1 个视频角色主体 | 最多 1 段参考视频 |
+| 使用 `feature_video` 时 | 生成多镜头视频时 `multi_shot` 只能为 `true`；`audio` 只能为 `off`（不支持音画同出） | 仅支持定义视频首帧，不支持定义视频尾帧 |
+| 使用 `base_video` 时 | 不支持定义首帧/尾帧；不支持多镜头；`audio` 不能为 `native` | 不支持定义视频首帧或尾帧 |
+
+**主体（`element`）约束**
+
+- `kling-3.0-omni`：主体分视频角色主体与多图主体。首帧/首尾帧生成时最多 3 个主体；无参考视频且仅视频角色主体时 ≤ 3；两类同时存在时视频角色主体 ≤ 3 且参考图片+多图主体之和 ≤ 4；有参考视频时视频角色主体 ≤ 1，且不同时支持视频角色主体和多图主体。
+- `kling-o1`：仅支持多图主体，不支持视频角色主体；使用首尾帧生成视频时不支持主体。
+
+**`settings` 子字段**
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `resolution` | string | 否 | 720p | 生成视频的清晰度<br />- `kling-3.0-omni`：`720p` / `1080p` / `4k`<br />- `kling-o1`：`720p` / `1080p` |
+| `aspect_ratio` | string | 否 | 16:9 | 画面纵横比，可选值：`16:9`、`9:16`、`1:1`<br />当没有首帧图且没有参考视频时必填 |
+| `duration` | int | 否 | 5 | 生成视频时长，单位：秒<br />- `kling-3.0-omni`：可选值 `3` ~ `15`（整数）<br />- `kling-o1`：可选值 `3` ~ `10`（整数）；仅使用首帧图且无其他参考图和参考视频时，仅支持 `5` 或 `10` |
+| `audio` | string | 否 | off | 声音设置<br />- `kling-3.0-omni`：`native`（与画面适配的声音）/ `original`（保留参考视频原声）/ `off`（无声）<br />- `kling-o1`：`original` / `off`（不支持 `native`，不支持音画同出生成音效） |
+| `multi_shot` | boolean | 否 | true | 是否生成多镜头视频，仅 `kling-3.0-omni` 支持<br />为 `false` 时即便使用多镜头格式的 prompt 也不会生成多镜头视频 |
+
+**`options` 子字段**
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `callback_url` | string | 否 |  | 本次任务结果回调地址，发送给任务服务；是否投递及消息格式以实际服务行为为准 |
+| `external_task_id` | string | 否 |  | 自定义任务 ID，传入不会覆盖系统生成的任务 ID，但支持通过该 ID 进行任务查询；单用户下需保证唯一性 |
+| `watermark_info` | object | 否 |  | 是否同时生成含水印的结果，格式示例：`{"enabled": true}`，`enabled` 为布尔值，默认 `false`；暂不支持自定义水印 |
+
+#### 请求示例
+
+仅提示词（文生场景，`kling-3.0-omni`）：
+
+```bash
+curl --request POST \
+  --url https://video.pinducloud.com.cn/kling/omni-video/kling-3.0-omni \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "contents": [
+      {"type": "prompt", "text": "日落时分，海浪轻轻拍打沙滩，远处渔船缓缓归航"}
+    ],
+    "settings": {
+      "resolution": "1080p",
+      "aspect_ratio": "16:9",
+      "duration": 5,
+      "audio": "native",
+      "multi_shot": false
+    }
+  }'
+```
+
+特征参考视频（`kling-3.0-omni`，此场景 `audio` 只能为 `off`）：
+
+```bash
+curl --request POST \
+  --url https://video.pinducloud.com.cn/kling/omni-video/kling-3.0-omni \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "contents": [
+      {"type": "prompt", "text": "保持 @video_1 中人物动作连贯，将背景从室内切换到室外阳台"},
+      {"type": "feature_video", "url": "https://example.com/ref.mp4", "id": "video_1"}
+    ],
+    "settings": {
+      "resolution": "720p",
+      "audio": "off",
+      "multi_shot": true
+    }
+  }'
+```
+
+首帧+参考图（`kling-o1`）：
+
+```bash
+curl --request POST \
+  --url https://video.pinducloud.com.cn/kling/omni-video/kling-o1 \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "contents": [
+      {"type": "prompt", "text": "画面从 @image_1 开始，人物缓慢向镜头走近，风格参考 @image_2"},
+      {"type": "first_frame", "url": "https://example.com/first.png", "id": "image_1"},
+      {"type": "refer_image", "url": "https://example.com/style.png", "id": "image_2"}
+    ],
+    "settings": {
+      "resolution": "1080p",
+      "duration": 5,
+      "audio": "off"
+    }
+  }'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, // 错误码；错误详情见 message 字段
+  "message": "string", // 错误信息
+  "request_id": "string", // 请求ID，系统生成，用于跟踪请求、排查问题
+  "data": {
+    "id": "string", // 任务ID，系统生成
+    "status": "string", // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeeded（成功）、failed（失败）
+    "create_time": 1781080778802, // 任务创建时间，Unix时间戳、单位ms
+    "update_time": 1781080794151, // 任务更新时间，Unix时间戳、单位ms
+    "external_id": "string" // 该任务的自定义任务ID（如有）
+  }
+}
+```
+
+---
+
+### 查询任务
+
+新版接口使用统一查询端点 `GET /kling/tasks`，支持按系统任务 ID 或自定义任务 ID 查询、批量查询，详见 [查询任务](/docs/video/kling-new/query)。

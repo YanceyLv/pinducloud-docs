@@ -1,0 +1,89 @@
+---
+title: "查询任务"
+sidebar_label: "05-查询任务"
+---
+
+# 查询任务
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+新版接口提供**统一的任务查询端点**：无论任务由文生视频、图生视频、Omni 视频生成还是动作控制创建，均通过同一个接口查询。
+
+### 查询任务
+
+```text
+GET https://video.pinducloud.com.cn/kling/tasks
+```
+
+> 当前接口仅支持查询非实时/异步任务。
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 否 | application/json | GET 查询不携带 JSON 请求体，可省略此头 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 查询参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|:---|:---|:---:|:---|
+| `task_ids` | string | 可选 | 需要查询的系统任务 ID（创建任务响应中的 `data.id`）<br />- 支持批量查询，多个 ID 用 `,` 分隔，最多 100 个<br />- `task_ids` 与 `external_task_ids` 最多选择一种，不可同时使用；不传时列出当前用户的新版任务 |
+| `external_task_ids` | string | 可选 | 需要查询的自定义任务 ID（创建任务时 `options.external_task_id` 传入的值）<br />- 支持批量查询，多个 ID 用 `,` 分隔，最多 100 个<br />- `task_ids` 与 `external_task_ids` 最多选择一种，不可同时使用；不传时列出当前用户的新版任务 |
+
+#### 请求示例
+
+不传任务 ID 时，最多返回当前用户最近创建的 100 条新版任务；该接口不提供分页参数。查询已保存的历史任务时，应传入创建响应中的公开 ID。筛选结果按本站任务顺序返回，不保证与请求 ID 顺序相同。
+
+```bash
+# 单任务查询
+curl --request GET \
+  --url 'https://video.pinducloud.com.cn/kling/tasks?task_ids={task_id}' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token'
+
+# 批量查询（逗号分隔）
+curl --request GET \
+  --url 'https://video.pinducloud.com.cn/kling/tasks?task_ids={id1},{id2},{id3}' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token'
+
+# 按自定义任务 ID 查询
+curl --request GET \
+  --url 'https://video.pinducloud.com.cn/kling/tasks?external_task_ids={your_external_task_id}' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, // 错误码；错误详情见 message 字段
+  "message": "string", // 错误信息
+  "request_id": "string", // 请求ID，系统生成，用于跟踪请求、排查问题
+  "data": [
+    {
+      "id": "string", // 被查询的任务ID
+      "status": "string", // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeeded（成功）、failed（失败）
+      "message": "string", // 任务状态信息，当任务失败时展示失败原因（如触发平台的内容风控等）
+      "create_time": 1781080778802, // 任务创建时间，Unix时间戳、单位ms
+      "update_time": 1781080794151, // 任务更新时间，Unix时间戳、单位ms
+      "external_id": "string", // 该任务的自定义任务ID（如有）
+      "outputs": [
+        {
+          "type": "video", // 生成结果类型，视频生成任务为 video
+          "id": "string", // 视频ID，由系统生成
+          "url": "string", // 生成结果的URL，防盗链格式（请注意，为保障信息安全，生成结果可能在到期后被清理，请及时转存）
+          "watermark_url": "string", // 含水印视频下载URL，防盗链格式
+          "duration": "string" // 生成的视频的时长，单位：秒
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### 说明
+
+- `data` 为数组，仅包含当前用户可访问且匹配筛选条件的任务；无匹配项时为空数组，不保证与传入 ID 一一对应或保持其顺序。
+- 任务到达 `succeeded` 状态且 `outputs` 非空时，即可通过 `outputs[].url` 下载生成结果。
+- 生成结果 URL 为防盗链格式，有效期以实际返回地址为准，请及时下载或转存。
+- 建议轮询间隔 5~15 秒；也可在创建任务时配置 `options.callback_url`，是否收到回调以任务服务实际行为为准，最终状态仍通过查询接口确认。

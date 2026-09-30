@@ -1,0 +1,149 @@
+---
+title: "图生视频"
+sidebar_label: "02-图生视频"
+---
+
+# 图生视频
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+### 创建任务
+
+```text
+POST https://video.pinducloud.com.cn/kling/image-to-video/{model}
+```
+
+`{model}` 为路径参数，指定使用的模型版本：
+
+| 模型 | 说明 |
+|:---|:---|
+| `kling-3.0` | 旗舰模型，支持首尾帧、主体引用、原生音频、最高 4K |
+| `kling-3.0-turbo` | 3.0 加速版，仅支持首帧 |
+| `kling-2.6` | 支持首尾帧、原生音频与指定音色 |
+| `kling-2.5-turbo` | 支持首尾帧，快速生成 |
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 是 | application/json | 数据交换格式 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求体
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `contents` | array | 是 |  | 参考素材合集，数组元素为不同类型的素材对象，见下表 |
+| `settings` | object | 否 |  | 输出配置相关参数，见下表 |
+| `options` | object | 否 |  | 通用配置，见下表 |
+
+**`contents` 数组元素类型**
+
+| type | 支持模型 | 字段 | 说明 |
+|:---|:---|:---|:---|
+| `prompt` | 全部 | `text`（必填） | 文本提示词<br />- `kling-3.0`：不超过 3072 字符，建议不超过 2500 字符；支持多镜头格式（`镜头 n, m, words;`，最多 6 分镜，单分镜提示词最大 512）；可通过 `@xxx` 指定某个主体（如 `@Zhang`）<br />- 其余模型：不超过 2500 字符<br />- `kling-2.6`：可通过 `@素材索引ID` 指定音色（如 `@1`） |
+| `first_frame` | 全部 | `url`（必填） | 首帧图，支持通过 URL 或 base64 提供<br />格式 .jpg/.jpeg/.png，不超过 50MB，宽高不小于 300px，宽高比 1:2.5 ~ 2.5:1 |
+| `last_frame` | `kling-3.0`、`kling-2.6`、`kling-2.5-turbo` | `url`（必填） | 尾帧图，格式要求同首帧<br />- 支持仅首帧、首帧+尾帧，不支持仅尾帧<br />- `kling-3.0-turbo` 暂不支持尾帧<br />- `kling-2.6` / `kling-2.5-turbo` 使用首尾帧时仅支持生成 1080P 视频 |
+| `element` | 仅 `kling-3.0` | `element_id`（必填）、`id`（必填） | 主体素材。`element_id` 由系统生成（通过主体管理相关 API 获取）；`id` 为素材索引 ID，用于在 prompt 中以 `@` 格式指定，同任务中不得重复<br />最多支持指定 3 个主体 |
+| `voice` | 仅 `kling-2.6` | `voice_id`（必填）、`id`（必填） | 音色素材。`voice_id` 由系统生成（通过音色定制相关 API 获取，也可使用系统预置音色）；`id` 为素材索引 ID，prompt 中通过 `@id` 引用<br />- 至多引用 2 个音色<br />- 指定音色时 `settings.audio` 不能为 `off` |
+
+**`settings` 子字段**
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `resolution` | string | 否 | 720p | 生成视频的清晰度<br />可选值：`720p`、`1080p`、`4k`<br />- `4k` 仅 `kling-3.0` 支持<br />- `kling-2.6`：有声视频、首尾帧仅支持 `1080p`<br />- `kling-2.5-turbo`：首尾帧仅支持 `1080p` |
+| `duration` | int | 否 | 5 | 生成视频时长，单位：秒<br />- `kling-3.0` / `kling-3.0-turbo`：可选值 `3` ~ `15`（整数）<br />- `kling-2.6` / `kling-2.5-turbo`：可选值 `5`、`10` |
+| `audio` | string | 否 | off | 是否生成带有声音的视频<br />可选值：`native`（含与画面适配的声音）、`off`（无声）<br />- 仅 `kling-3.0`、`kling-2.6` 支持<br />- `kling-2.6` 无声时不支持指定音色 |
+| `multi_shot` | boolean | 否 | true | 是否生成多镜头视频，仅 `kling-3.0` 支持<br />为 `false` 时即便使用多镜头格式的 prompt 也不会生成多镜头视频 |
+
+> 图生视频无 `aspect_ratio` 参数，画面比例随首帧图。
+
+**`options` 子字段**
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `callback_url` | string | 否 |  | 本次任务结果回调地址，发送给任务服务；是否投递及消息格式以实际服务行为为准 |
+| `external_task_id` | string | 否 |  | 自定义任务 ID，传入不会覆盖系统生成的任务 ID，但支持通过该 ID 进行任务查询；单用户下需保证唯一性 |
+| `watermark_info` | object | 否 |  | 是否同时生成含水印的结果，格式示例：`{"enabled": true}`，`enabled` 为布尔值，默认 `false`；暂不支持自定义水印 |
+
+#### 各模型能力支持范围
+
+| 能力 | kling-3.0 | kling-3.0-turbo | kling-2.6 | kling-2.5-turbo |
+|:---|:---|:---|:---|:---|
+| 仅首帧 | 支持 | 支持 | 支持 | 支持 |
+| 首帧+尾帧 | 支持 | 不支持 | 支持（仅 1080p） | 支持（仅 1080p） |
+| 主体引用（element） | 最多 3 个 | 不支持 | 不支持 | 不支持 |
+| 指定音色（voice） | 不支持 | 不支持 | 至多 2 个 | 不支持 |
+| `resolution` | 720p / 1080p / 4k | 720p / 1080p | 720p / 1080p | 720p / 1080p |
+| `duration` | 3 ~ 15 | 3 ~ 15 | 5 / 10 | 5 / 10 |
+| `audio` | native / off | 不支持 | native / off | 不支持 |
+
+#### 请求示例
+
+仅首帧（`kling-3.0`）：
+
+```bash
+curl --request POST \
+  --url https://video.pinducloud.com.cn/kling/image-to-video/kling-3.0 \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "contents": [
+      {"type": "prompt", "text": "镜头缓缓向前推进，场景由白天过渡到傍晚"},
+      {"type": "first_frame", "url": "https://example.com/first_frame.png"}
+    ],
+    "settings": {
+      "resolution": "1080p",
+      "duration": 5,
+      "audio": "off",
+      "multi_shot": false
+    },
+    "options": {
+      "external_task_id": "my-task-002"
+    }
+  }'
+```
+
+首帧+音色（`kling-2.6`，prompt 中通过 `@1` 引用音色）：
+
+```bash
+curl --request POST \
+  --url https://video.pinducloud.com.cn/kling/image-to-video/kling-2.6 \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "contents": [
+      {"type": "prompt", "text": "画面中的女孩 @1 轻声细语地介绍手中的产品"},
+      {"type": "first_frame", "url": "https://example.com/first_frame.png"},
+      {"type": "voice", "voice_id": "829826751244537879", "id": "1"}
+    ],
+    "settings": {
+      "audio": "native",
+      "resolution": "1080p",
+      "duration": 5
+    }
+  }'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, // 错误码；错误详情见 message 字段
+  "message": "string", // 错误信息
+  "request_id": "string", // 请求ID，系统生成，用于跟踪请求、排查问题
+  "data": {
+    "id": "string", // 任务ID，系统生成
+    "status": "string", // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeeded（成功）、failed（失败）
+    "create_time": 1781080778802, // 任务创建时间，Unix时间戳、单位ms
+    "update_time": 1781080794151, // 任务更新时间，Unix时间戳、单位ms
+    "external_id": "string" // 该任务的自定义任务ID（如有）
+  }
+}
+```
+
+---
+
+### 查询任务
+
+新版接口使用统一查询端点 `GET /kling/tasks`，支持按系统任务 ID 或自定义任务 ID 查询、批量查询，详见 [查询任务](/docs/video/kling-new/query)。

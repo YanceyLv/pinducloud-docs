@@ -1,0 +1,162 @@
+---
+title: "视频编辑"
+sidebar_label: "04-视频编辑"
+---
+
+# 视频编辑
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+对已有视频按文本指令进行编辑（`wan2.7-videoedit`），支持两类用法：
+
+| 能力 | media 组成 | 说明 |
+|:---|:---|:---|
+| 纯指令编辑 | 仅 1 个 `video` | 通过指令直接修改视频内容：添加/删除/修改元素、改色、修改环境或背景、转换视频风格、修改角色行为/台词/拍摄方式等 |
+| 指令+参考图编辑 | 1 个 `video` + 最多 4 张 `reference_image` | 将参考图中的元素（服饰、道具等）应用到视频中，或复刻动作/运镜/特效（视频迁移） |
+
+任务为**异步调用**：创建任务返回 `output.task_id`，再通过查询接口轮询结果，生成耗时通常 1–5 分钟。
+
+---
+
+### 创建任务
+
+```text
+POST https://video.pinducloud.com.cn/ali/api/v1/services/aigc/video-generation/video-synthesis
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 是 | application/json | 数据交换格式 |
+| `Authorization` | string | 是 |  | 鉴权信息，`Bearer sk-your-pinducloud-token` |
+
+> 官方要求的 `X-DashScope-Async: enable` 头由平台自动补充，调用时无需携带。
+
+#### 请求体
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `model` | string | 是 |  | 模型标识，固定为 `wan2.7-videoedit` |
+| `input` | object | 是 |  | 输入基本信息 |
+| `input.prompt` | string | 否 |  | 编辑指令提示词，描述期望的元素与视觉特点。中英文均可，长度 ≤ 5000 字符，超长自动截断 |
+| `input.negative_prompt` | string | 否 |  | 反向提示词，描述不希望出现的内容。≤ 500 字符，超长自动截断 |
+| `input.media` | array | 是 |  | 媒体素材列表，元素为 `{type, url}` 对象。`video` 有且仅有 1 个；`reference_image` 最多 4 张 |
+| `input.media[].type` | string | 是 |  | `video`：待编辑视频（必传）<br />`reference_image`：参考图像（可选） |
+| `input.media[].url` | string | 是 |  | 素材地址。视频仅支持公网 URL（HTTP/HTTPS）；图像支持公网 URL 或 Base64（`data:{MIME_type};base64,{base64_data}`，支持 JPEG/PNG/BMP/WEBP） |
+| `parameters` | object | 否 |  | 视频处理参数 |
+| `parameters.duration` | integer | 否 | 0 | 输出视频时长（秒）。**默认 0 表示直接继承输入视频时长，不截断**；仅需截断时才传 [2, 10] 的整数，系统从原视频 0 秒起截取至该长度 |
+| `parameters.resolution` | string | 否 | 1080P | 输出分辨率档位，可选 `720P`、`1080P` |
+| `parameters.ratio` | string | 否 | 按输入视频近似比例 | 输出宽高比，可选 `16:9`、`9:16`、`1:1`、`4:3`、`3:4`；不传则按输入视频的近似比例输出 |
+| `parameters.audio_setting` | string | 否 | auto | 声音设置。`auto`：模型按 prompt 智能判断（指令涉及声音描述时可能重新生成音频，否则可能保留原声）；`origin`：强制保留输入视频原声，不重新生成 |
+| `parameters.prompt_extend` | boolean | 否 | true | 是否开启提示词智能改写。对较短的 prompt 提升明显，但会增加耗时 |
+| `parameters.watermark` | boolean | 否 | false | 是否在视频右下角添加「AI生成」水印 |
+| `parameters.seed` | integer | 否 | 随机 | 随机种子，范围 [0, 2147483647]。固定 seed 可提升复现性，但不保证结果完全一致 |
+
+> **duration=0 语义（重点）**：`parameters.duration` 默认为 0，表示输出时长**继承输入视频时长**；希望输出与输入等长时无需设置（或传 0）。由于实际时长需在任务完成后才能确定，请以查询结果中的 `usage` 字段为准。
+
+#### resolution × ratio 输出分辨率对照
+
+| 档位 | 宽高比 | 输出（宽×高） |
+|:---|:---|:---|
+| 720P | 16:9 | 1280×720 |
+| 720P | 9:16 | 720×1280 |
+| 720P | 1:1 | 960×960 |
+| 720P | 4:3 | 1104×832 |
+| 720P | 3:4 | 832×1104 |
+| 1080P | 16:9 | 1920×1080 |
+| 1080P | 9:16 | 1080×1920 |
+| 1080P | 1:1 | 1440×1440 |
+| 1080P | 4:3 | 1648×1248 |
+| 1080P | 3:4 | 1248×1648 |
+
+#### 输入素材要求
+
+**待编辑视频（type=video）：**
+
+| 项 | 限制 |
+|:---|:---|
+| 数量 | 有且仅有 1 个（必传） |
+| 格式 | MP4、MOV |
+| 时长 | 2–10 秒 |
+| 分辨率 | 宽、高均在 [240, 4096] 像素 |
+| 宽高比 | 1:8 ~ 8:1 |
+| 文件大小 | ≤ 100MB |
+| 输入方式 | 公网 URL（HTTP/HTTPS），不支持 Base64 |
+
+**参考图像（type=reference_image）：**
+
+| 项 | 限制 |
+|:---|:---|
+| 数量 | 最多 4 张（可选） |
+| 格式 | JPEG、JPG、PNG（不支持透明通道）、BMP、WEBP |
+| 分辨率 | 宽、高均在 [240, 8000] 像素 |
+| 宽高比 | 1:8 ~ 8:1 |
+| 文件大小 | ≤ 20MB |
+| 输入方式 | 公网 URL 或 Base64 |
+
+#### 请求示例
+
+```bash
+curl --request POST \
+  --url 'https://video.pinducloud.com.cn/ali/api/v1/services/aigc/video-generation/video-synthesis' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model": "wan2.7-videoedit",
+    "input": {
+      "prompt": "将视频中的建筑外墙涂成鲜艳的红色",
+      "media": [
+        {
+          "type": "video",
+          "url": "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20260409/dozxak/Wan_Video_Edit_33_1.mp4"
+        }
+      ]
+    },
+    "parameters": {
+      "audio_setting": "origin",
+      "duration": 0
+    }
+  }'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "output": {
+    "task_status": "PENDING",
+    "task_id": "0385dc79-5ff8-4d82-bcb6-xxxxxx"
+  },
+  "request_id": "4909100c-7b5a-9f92-bfe5-xxxxxx"
+}
+```
+
+#### 响应字段
+
+| 字段 | 类型 | 说明 |
+|:---|:---|:---|
+| `output.task_id` | string | 任务 ID，用于查询本站保留的任务记录 |
+| `output.task_status` | string | 任务状态，创建成功时为 `PENDING` |
+| `request_id` | string | 请求唯一标识，用于溯源排查 |
+| `code` / `message` | string | 仅创建失败时返回，错误码与详情 |
+
+#### 计费说明
+
+查询任务成功后，`usage` 中可能包含以下用量字段；具体计费规则以本站模型价格为准：
+
+- `usage.duration`：任务服务报告的用量时长（秒）；若返回输入、输出时长，可分别读取 `input_video_duration` 和 `output_video_duration`，不要仅凭请求参数推算最终费用；
+- `usage.SR`：输出视频分辨率档位（如 `720`、`1080`）；是否采用不同档位价格以本站设置为准；
+- 参考图片是否参与收费以本站定价规则为准。视频任务失败后退还该任务预扣额度，退款结果以使用日志为准。
+
+---
+
+### 查询任务
+
+通过创建任务返回的 `task_id` 轮询任务状态，成功后从 `output.video_url` 获取视频（有效期以实际返回地址为准）。
+
+```text
+GET https://video.pinducloud.com.cn/ali/api/v1/tasks/{task_id}
+```
+
+详见 [09-查询任务](/docs/video/wan/query)。

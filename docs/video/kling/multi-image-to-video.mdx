@@ -1,0 +1,262 @@
+---
+title: "多图参考生视频"
+sidebar_label: "04-多图参考生视频"
+---
+
+# 多图参考生视频
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+POST 创建或管理请求可通过 `model_name` 选择账号已开通的可灵型号；未传时读取 `model`，两者都省略时使用 `kling-v1`。即使接口参数表未列出模型字段，也需确保账号已开通所选型号及对应能力。
+
+### 创建任务
+
+```text
+POST https://video.pinducloud.com.cn/kling/v1/videos/multi-image2video
+```
+
+基于多张参考图片（元素）生成视频。
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 是 | application/json | 数据交换格式 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求体
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `model_name` | string | 否 | kling-v1-6 | 模型名称<br />可选值: `kling-v1-6` |
+| `image_list` | array | 是 |  | 参考图片列表<br />- 最多支持 4 张图片，用 key:value 承载，如下：<br />- API 端无裁剪逻辑，请直接上传已选主体后的图片<br />- 支持传入图片 Base64 编码或图片 URL（确保可访问）<br />- 注意：若您使用 Base64 方式，请不要在 Base64 编码字符串前添加任何前缀（如 `data:image/png;base64,`），直接传递 Base64 编码后的字符串即可。<br />- 图片格式支持 .jpg / .jpeg / .png<br />- 图片文件大小不能超过 10MB，图片宽高尺寸不小于 300px，图片宽高比介于 1:2.5 ~ 2.5:1 之间 |
+|   `image` | string | 是 |  | 图片 URL 或 Base64 字符串 |
+| `prompt` | string | 是 |  | 正向文本提示词<br />- 不能超过 2500 个字符 |
+| `negative_prompt` | string | 否 |  | 负向文本提示词<br />- 不能超过 2500 个字符 |
+| `mode` | string | 否 | std | 生成视频的模式<br />可选值: `std`, `pro`<br />- 其中std：标准模式（标准），基础模式，性价比高<br />- 其中pro：专家模式（高品质），高表现模式，生成视频质量更佳<br />不同模型版本、视频模式支持范围不同，请按所选型号的参数范围使用 |
+| `duration` | string | 否 | 5 | 生成视频时长，单位 s<br />可选值: `5`, `10` |
+| `aspect_ratio` | string | 否 | 16:9 | 生成图片的画面纵横比（宽:高）<br />可选值: `16:9`, `9:16`, `1:1` |
+| `watermark_info` | object | 否 |  | 是否同时生成含水印的结果<br />- 通过enabled参数定义，具体格式如下：<br />- true 为生成，false 为不生成<br />- 暂不支持自定义水印 |
+| `callback_url` | string | 否 |  | 本次任务结果回调地址，发送给任务服务；是否投递及消息格式以实际服务行为为准<br />- 查询接口用于确认最终任务状态，请保留创建响应中的任务 ID |
+| `external_task_id` | string | 否 |  | 自定义任务 ID<br />- 用户自定义任务 ID，传入不会覆盖系统生成的任务 ID，本站任务查询仍使用创建响应返回的公开任务 ID<br />- 请注意，单用户下需要保证唯一性 |
+
+**参数格式说明**
+
+**`image_list`**
+
+```jsonc
+{
+"image_list":[
+  { "image":"image_url" },
+  { "image":"image_url" },
+  { "image":"image_url" },
+  { "image":"image_url" }
+]
+}
+```
+
+```plaintext
+iVBORw0KGgoAAAANSUhEUgAAAAUA...
+```
+
+```plaintext
+data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA...
+```
+
+**`watermark_info`**
+
+```jsonc
+{
+"watermark_info": { "enabled": true }
+}
+```
+
+
+#### 请求示例
+
+```bash
+curl --request POST \
+  --url https://video.pinducloud.com.cn/kling/v1/videos/multi-image2video \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model_name": "kling-v1-6",
+    "image_list": [
+      { "image": "https://p1-kling.klingai.com/kcdn/cdn-kcdn112452/kling-qa-test/dog.png" },
+      { "image": "https://p1-kling.klingai.com/kcdn/cdn-kcdn112452/kling-qa-test/dog_cloth.png" }
+    ],
+    "prompt": "一只白色比熊穿着东北红色花棉袄，舔自己的手",
+    "negative_prompt": "",
+    "mode": "pro",
+    "duration": "5",
+    "aspect_ratio": "16:9",
+    "callback_url": "",
+    "external_task_id": ""
+  }'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, // 错误码；错误详情见 message 字段
+  "message": "string", // 错误信息
+  "request_id": "string", // 请求ID，系统生成，用于跟踪请求、排查问题
+  "data": {
+    "task_id": "string", // 任务ID，系统生成
+    "task_status": "string", // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+    "created_at": 1722769557708, // 任务创建时间，Unix时间戳、单位ms
+    "updated_at": 1722769557708 //任务更新时间，Unix时间戳、单位ms
+  }
+}
+```
+
+---
+
+### 查询任务（单个）
+
+```text
+GET https://video.pinducloud.com.cn/kling/v1/videos/multi-image2video/{id}
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 否 | application/json | GET 查询不携带 JSON 请求体，可省略此头 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求示例
+
+```bash
+curl --request GET \
+  --url https://video.pinducloud.com.cn/kling/v1/videos/multi-image2video/{task_id} \
+  --header 'Authorization: Bearer sk-your-pinducloud-token'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, // 错误码；错误详情见 message 字段
+  "message": "string", // 错误信息
+  "request_id": "string", // 请求ID，系统生成，用于跟踪请求、排查问题
+  "data": {
+    "task_id": "string", // 任务ID，系统生成
+    "task_status": "string", // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+    "task_status_msg": "string", // 任务状态信息，当任务失败时展示失败原因（如触发平台的内容风控等）
+    "task_info": { //任务创建时的参数信息
+      "external_task_id": "string" //客户自定义任务ID
+    },
+    "task_result": {
+      "videos": [
+        {
+          "id": "string", // 生成的视频ID；全局唯一
+          "url": "string", // 生成视频的URL（请注意，为下载地址可能有有效期，请及时转存）
+          "watermark_url": "string", // 含水印视频下载URL，防盗链格式
+          "duration": "string" //视频总时长，单位s
+        }
+      ]
+    },
+    "watermark_info": {
+      "enabled": true
+    },
+    "final_unit_deduction": "string", // 任务服务原生积分信息；本站实际扣费以使用日志为准
+    "created_at": 1722769557708, // 任务创建时间，Unix时间戳、单位ms
+    "updated_at": 1722769557708 //任务更新时间，Unix时间戳、单位ms
+  }
+}
+```
+
+---
+
+### 查询任务（列表）
+
+列表仅返回当前用户在该接口创建的任务。响应使用本站的 `items` 分页结构；每项 `data` 保留原生任务字段，`task_id` 为本站公开任务 ID。外层 `created_at` 使用 Unix 秒，原生 `data` 内的时间单位见字段注释。
+
+#### 查询参数
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `pageNum` | integer | 否 | 1 | 页码，范围 1–500 |
+| `pageSize` | integer | 否 | 20 | 每页数量，范围 1–500 |
+| `filter.model` | string | 否 |  | 按原版模型名称筛选 |
+| `filter.task_ids` | string | 否 |  | 按公开任务 ID 筛选；重复传入参数指定多个 ID，最多 100 个 |
+
+
+```text
+GET https://video.pinducloud.com.cn/kling/v1/videos/multi-image2video
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 否 | application/json | GET 查询不携带 JSON 请求体，可省略此头 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求示例
+
+```bash
+curl --request GET \
+  --url 'https://video.pinducloud.com.cn/kling/v1/videos/multi-image2video?pageNum=1&pageSize=30' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "items": [{
+    "task_id": "task-example",
+    "platform": "kling",
+    "action": "multi_image_to_video",
+    "status": "SUCCESS",
+    "progress": "100%",
+    "fail_reason": "",
+    "created_at": 1722769557,
+    "data": {
+      "code": 0,
+      // 错误码；错误详情见 message 字段
+      "message": "string",
+      // 错误信息
+      "request_id": "string",
+      // 请求ID，系统生成，用于跟踪请求、排查问题
+      "data": {
+        "task_id": "task-example",
+        // 任务ID，系统生成
+        "task_status": "succeed",
+        // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+        "task_status_msg": "string",
+        // 任务状态信息，当任务失败时展示失败原因（如触发平台的内容风控等）
+        "task_info": {
+          //任务创建时的参数信息
+          "external_task_id": "string" //客户自定义任务ID
+        },
+        "task_result": {
+          "videos": [{
+            "id": "string",
+            // 生成的视频ID；全局唯一
+            "url": "string",
+            // 生成视频的URL（请注意，为下载地址可能有有效期，请及时转存）
+            "watermark_url": "string",
+            // 含水印视频下载URL，防盗链格式
+            "duration": "string" //视频总时长，单位s
+          }]
+        },
+        "watermark_info": {
+          "enabled": true
+        },
+        "final_unit_deduction": "string",
+        // 任务服务原生积分信息；本站实际扣费以使用日志为准
+        "created_at": 1722769557708,
+        // 任务创建时间，Unix时间戳、单位ms
+        "updated_at": 1722769557708 //任务更新时间，Unix时间戳、单位ms
+      }
+    }
+  }],
+  "total": 1,
+  "page_num": 1,
+  "page_size": 30
+}
+```

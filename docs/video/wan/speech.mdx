@@ -1,0 +1,222 @@
+---
+title: "数字人视频"
+sidebar_label: "07-数字人视频"
+---
+
+# 数字人视频
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+基于**单张人物图片 + 一段人声音频**，生成口型、表情、动作与音频同步的说话、唱歌、表演视频。支持真人（肖像/半身/全身）及卡通人物形象。
+
+本文档包含两个接口：
+
+| 接口 | 模型 | 调用方式 |
+|:---|:---|:---|
+| 数字人视频生成 | `wan2.2-s2v` | 异步（创建任务 + 轮询查询） |
+| 人脸检测 | `wan2.2-s2v-detect` | 同步（立即返回结果） |
+
+> **推荐流程**：先调用人脸检测接口确认图片合规（`check_pass: true`），再提交数字人视频生成任务，可避免因图片不合规导致任务失败。
+
+---
+
+## 一、数字人视频生成（wan2.2-s2v）
+
+### 创建任务
+
+```text
+POST https://video.pinducloud.com.cn/ali/api/v1/services/aigc/image2video/video-synthesis
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 是 | application/json | 数据交换格式 |
+| `Authorization` | string | 是 |  | 鉴权信息，`Bearer sk-your-pinducloud-token` |
+
+> 官方要求的 `X-DashScope-Async: enable` 头由平台自动补充，调用时**无需携带**；携带亦兼容。
+
+#### 请求体
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `model` | string | 是 |  | 固定为 `wan2.2-s2v` |
+| `input.image_url` | string | 是 |  | 人物图片 URL，需公网可访问的 HTTP/HTTPS 链接。要求见下方「图片与音频要求」 |
+| `input.audio_url` | string | 是 |  | 人声音频 URL，需公网可访问的 HTTP/HTTPS 链接。要求见下方「图片与音频要求」 |
+| `parameters.resolution` | string | 否 | 480P | 输出分辨率档位，可选 `480P`、`720P`。输出保持与输入图片相同宽高比，总像素调整至所选档位附近（480P 约 31 万像素，720P 约 92 万像素；例如 4:5 的输入图选 480P 可能输出 480×600） |
+| `parameters.style` | string | 否 |  | 对口型场景，如 `speech`（说话）。官方描述支持说话、唱歌、表演三种场景，唱歌/表演的枚举值官方未公开，建议以实测为准 |
+
+#### 视频时长规则
+
+**生成视频时长 = 输入音频时长**，不通过参数指定：
+
+- 音频时长须 **小于 20 秒**，超过将导致任务报错；
+- 如需更长的视频，请将音频按每段小于 20 秒切分，分别生成后再拼接。
+
+#### 图片与音频要求
+
+| 输入 | 要求 |
+|:---|:---|
+| 图片 | 格式 jpg/jpeg/png/bmp/webp；宽、高均在 [400, 7000] 像素范围内；建议单人、正面、清晰的人物肖像图（可先用人脸检测接口预检） |
+| 音频 | 格式 wav/mp3；文件小于 15MB，时长小于 20 秒；需包含清晰响亮的人声，建议去除环境噪音与背景音乐 |
+
+#### 请求示例（480P）
+
+```bash
+curl --request POST \
+  --url 'https://video.pinducloud.com.cn/ali/api/v1/services/aigc/image2video/video-synthesis' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model": "wan2.2-s2v",
+    "input": {
+      "image_url": "https://example.com/portrait.jpg",
+      "audio_url": "https://example.com/speech.mp3"
+    },
+    "parameters": {
+      "resolution": "480P",
+      "style": "speech"
+    }
+  }'
+```
+
+#### 请求示例（720P）
+
+```bash
+curl --request POST \
+  --url 'https://video.pinducloud.com.cn/ali/api/v1/services/aigc/image2video/video-synthesis' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model": "wan2.2-s2v",
+    "input": {
+      "image_url": "https://example.com/portrait.jpg",
+      "audio_url": "https://example.com/sing.wav"
+    },
+    "parameters": {
+      "resolution": "720P",
+      "style": "speech"
+    }
+  }'
+```
+
+#### 创建响应示例
+
+```jsonc
+{
+  "output": {
+    "task_status": "PENDING",
+    "task_id": "0385dc79-5ff8-4d82-bcb6-xxxxxx"
+  },
+  "request_id": "4909100c-7b5a-9f92-bfe5-xxxxxx"
+}
+```
+
+#### 用量与计费说明
+
+任务成功后，查询接口返回的 `usage` 中：
+
+- `usage.duration`：生成视频时长（秒），与输入音频时长一致，为计费依据；
+- `usage.SR`：输出分辨率档位（`480` 或 `720`）；是否按不同价格计费，以本站该型号的定价为准。
+
+数字人视频提交时预扣额度，完成后按本站模型价格及可用用量信息结算；视频任务失败后退还预扣额度。生成耗时通常约 5–10 分钟，建议以 15 秒左右间隔轮询查询接口。
+
+---
+
+## 二、人脸检测（wan2.2-s2v-detect）
+
+预检输入图片是否满足数字人视频生成的人物肖像规范（如清晰度、单人、正面），返回是否通过及是否检测到人像。
+
+```text
+POST https://video.pinducloud.com.cn/ali/api/v1/services/aigc/image2video/face-detect
+```
+
+> 本接口为**同步接口**，检测结果随响应立即返回，**不产生 `task_id`**，无需轮询查询。
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 是 | application/json | 数据交换格式 |
+| `Authorization` | string | 是 |  | 鉴权信息，`Bearer sk-your-pinducloud-token` |
+
+#### 请求体
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `model` | string | 是 |  | 固定为 `wan2.2-s2v-detect` |
+| `input.image_url` | string | 是 |  | 待检测图片 URL，需公网可访问的 HTTP/HTTPS 链接。格式 jpg/jpeg/png/bmp/webp；宽、高均在 [400, 7000] 像素范围内 |
+
+#### 请求示例
+
+```bash
+curl --request POST \
+  --url 'https://video.pinducloud.com.cn/ali/api/v1/services/aigc/image2video/face-detect' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model": "wan2.2-s2v-detect",
+    "input": {
+      "image_url": "https://example.com/portrait.jpg"
+    }
+  }'
+```
+
+#### 响应示例
+
+**检测通过：**
+
+```jsonc
+{
+  "output": {
+    "check_pass": true,
+    "humanoid": true
+  },
+  "usage": {
+    "image_count": 1
+  },
+  "request_id": "c56f62df-xxxx-xxxx-xxxx-xxxxxx"
+}
+```
+
+**检测不通过：**
+
+```jsonc
+{
+  "output": {
+    "check_pass": false,
+    "humanoid": false,
+    "code": "xxx",
+    "message": "xxx"
+  },
+  "usage": {
+    "image_count": 1
+  },
+  "request_id": "c56f62df-xxxx-xxxx-xxxx-xxxxxx"
+}
+```
+
+#### 响应字段
+
+| 字段 | 类型 | 说明 |
+|:---|:---|:---|
+| `output.check_pass` | boolean | 检测结果：`true` 通过，可用于数字人视频生成；`false` 不通过 |
+| `output.humanoid` | boolean | 是否检测到人像 |
+| `output.code` / `output.message` | string | 仅检测不通过时返回原因；通过时无此字段 |
+| `usage.image_count` | integer | 本次检测的图片数量，固定为 1，为计费依据 |
+| `request_id` | string | 本次请求唯一 ID |
+
+> 人脸检测为同步接口，响应中的 `usage.image_count` 表示检测图片数量；`check_pass=false` 表示检测未通过，不等同于请求失败。是否收费及实际金额以本站该型号的价格和使用日志为准。
+
+---
+
+## 查询任务
+
+数字人视频生成（wan2.2-s2v）为异步任务，创建后通过 `task_id` 轮询状态及结果（人脸检测为同步接口，无需查询）：
+
+```text
+GET https://video.pinducloud.com.cn/ali/api/v1/tasks/{task_id}
+```
+
+详见 [09-查询任务](/docs/video/wan/query)。

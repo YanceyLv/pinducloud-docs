@@ -1,0 +1,137 @@
+---
+title: "智能多帧"
+sidebar_label: "05-智能多帧"
+---
+
+# 智能多帧
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+通过多个关键帧图片生成长视频，支持为每段关键帧配置独立提示词和时长。
+
+```text
+POST https://video.pinducloud.com.cn/vidu/ent/v2/multiframe
+```
+
+---
+
+## 请求参数
+
+### 请求头
+
+| 头部 | 必填 | 说明 |
+|:---|:---:|:---|
+| `Content-Type` | 是 | `application/json` |
+| `Authorization` | 是 | `Bearer sk-your-pinducloud-token` |
+
+### 请求体
+
+| 参数 | 子参数 | 类型 | 必填 | 说明 |
+|:---|:---|:---|:---:|:---|
+| `model` | | String | 是 | 模型名称。可选值：`viduq2-turbo`、`viduq2-pro` |
+| `start_image` | | String | 是 | 首帧图像。支持图片 Base64 编码或 URL。<br />仅支持 1 张图，支持 png、jpeg、jpg、webp 格式。<br />图片宽高比需在 1:4 至 4:1 之间，大小不超过 50 MB。<br />POST body 不超过 10MB，Base64 须含内容类型前缀。 |
+| `image_settings` | | Array | 是 | 关键帧配置。每个任务最少 2 个、最多 9 个关键帧。 |
+| | `prompt` | String | 可选 | 上一张图像到当前关键帧的提示词，控制延长的视频内容。 |
+| | `key_image` | String | 是 | 中间帧/尾帧的参考图像（URL 或 Base64）。<br />输入顺序即为时间轴顺序（从首帧到尾帧）。<br />支持 png、jpeg、jpg、webp 格式，大小不超过 50 MB。 |
+| | `duration` | Int | 可选 | 相邻关键帧之间的视频时长。默认 5s，可选 2–7s。 |
+| `resolution` | | String | 可选 | 分辨率。默认 720p，可选 540p、720p、1080p。 |
+| `watermark` | | Bool | 可选 | 是否添加水印。默认不加。 |
+| `wm_url` | | String | 可选 | 自定义水印图片 URL。 |
+| `wm_position` | | String | 可选 | 水印位置。默认 `bottom_left`。<br />可选值：`top_left`（左上）、`top_right`（右上）、`bottom_right`（右下）、`bottom_left`（左下） |
+| `meta_data` | | String | 可选 | 元数据标识，JSON 格式字符串，透传字段。 |
+| `payload` | | String | 可选 | 透传参数。最多 1048576 个字符。 |
+| `callback_url` | | String | 可选 | 回调地址。 |
+
+---
+
+## 请求示例
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer sk-your-pinducloud-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "viduq2-turbo",
+    "start_image": "https://example.com/start.png",
+    "image_settings": [
+      {
+        "prompt": "camera slowly pans right",
+        "key_image": "https://example.com/frame1.png",
+        "duration": 5
+      },
+      {
+        "prompt": "zoom in on the subject",
+        "key_image": "https://example.com/frame2.png",
+        "duration": 5
+      },
+      {
+        "prompt": "fade to sunset scene",
+        "key_image": "https://example.com/frame3.png",
+        "duration": 5
+      }
+    ],
+    "resolution": "1080p"
+  }' \
+  https://video.pinducloud.com.cn/vidu/ent/v2/multiframe
+```
+
+---
+
+## 响应参数
+
+| 字段 | 子参数 | 类型 | 说明 |
+|:---|:---|:---|:---|
+| `task_id` | | String | 任务 ID |
+| `state` | | String | 处理状态：`created`、`queueing`、`processing`、`success`、`failed` |
+| `model` | | String | 本次调用的模型名称 |
+| `start_image` | | String | 首帧图像 |
+| `image_settings` | | Array | 多帧配置信息 |
+| | `prompt` | String | 提示词 |
+| | `key_image` | String | 关键帧图像 |
+| | `duration` | Int | 时长 |
+| `resolution` | | String | 分辨率 |
+| `watermark` | | Bool | 是否使用水印 |
+| `wm_url` | | String | 水印内容 |
+| `wm_position` | | String | 水印位置 |
+| `meta_data` | | String | 元数据标识 |
+| `payload` | | String | 透传参数 |
+| `credits` | | Int | 任务服务原生积分信息；本站实际扣费以使用日志为准 |
+| `created_at` | | String | 任务创建时间 |
+
+---
+
+## 响应示例
+
+```jsonc
+{
+  "task_id": "{task_id}",
+  "state": "created",
+  "model": "viduq2-turbo",
+  "start_image": "https://example.com/start.png",
+  "image_settings": [
+    {
+      "key_image": "https://example.com/frame1.png",
+      "prompt": "camera slowly pans right",
+      "duration": 5
+    },
+    {
+      "key_image": "https://example.com/frame2.png",
+      "prompt": "zoom in on the subject",
+      "duration": 5
+    },
+    {
+      "key_image": "https://example.com/frame3.png",
+      "prompt": "fade to sunset scene",
+      "duration": 5
+    }
+  ],
+  "resolution": "1080p",
+  "watermark": false,
+  "wm_url": "",
+  "wm_position": "bottom_left",
+  "meta_data": "",
+  "payload": "",
+  "credits": 40,
+  "created_at": "2025-01-01T15:41:31.968916Z"
+}
+```

@@ -1,0 +1,293 @@
+---
+title: "图生视频"
+sidebar_label: "02-图生视频"
+---
+
+# 图生视频
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+POST 创建或管理请求可通过 `model_name` 选择账号已开通的可灵型号；未传时读取 `model`，两者都省略时使用 `kling-v1`。即使接口参数表未列出模型字段，也需确保账号已开通所选型号及对应能力。
+
+### 创建任务
+
+```text
+POST https://video.pinducloud.com.cn/kling/v1/videos/image2video
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 是 | application/json | 数据交换格式 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求体
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `model_name` | string | 否 | kling-v1 | 模型名称<br />可选值: `kling-v1`, `kling-v1-5`, `kling-v1-6`, `kling-v2-master`, `kling-v2-1`, `kling-v2-1-master`, `kling-v2-5-turbo`, `kling-v2-6`, `kling-v3` |
+| `image` | string | 否 |  | 参考图像<br />- 支持传入图片 Base64 编码或图片 URL（确保可访问）<br />- 若使用 Base64 方式，请不要在 Base64 编码字符串前添加任何前缀（如 `data:image/png;base64,`），直接传递 Base64 编码后的字符串即可。<br />- 图片格式支持 `.jpg / .jpeg / .png`<br />- 图片文件大小不能超过 10MB，图片宽高尺寸不小于 300px，图片宽高比介于 1:2.5 ~ 2.5:1 之间<br />- image 参数与 image_tail 参数至少二选一，二者不能同时为空<br />不同模型版本、视频模式支持范围不同，请按所选型号的参数范围使用 |
+| `image_tail` | string | 否 |  | 参考图像 - 尾帧控制<br />- 支持传入图片 Base64 编码或图片 URL（确保可访问）<br />- 注意：若您使用 Base64 方式，请不要在 Base64 编码字符串前添加任何前缀（如 `data:image/png;base64,`），直接传递 Base64 编码后的字符串即可。<br />- 图片格式支持 `.jpg / .jpeg / .png`<br />- 图片文件大小不能超过 10MB，图片宽高尺寸不小于 300px<br />- image 参数与 image_tail 参数至少二选一，二者不能同时为空<br />- image_tail 参数、dynamic_masks/static_mask 参数、camera_control 参数三选一，不能同时使用<br />不同模型版本、视频模式支持范围不同，请按所选型号的参数范围使用 |
+| `multi_shot` | boolean | 否 | false | 是否生成多镜头视频<br />当前参数为 true 时，prompt 参数无效<br />当前参数为 false 时，shot_type 参数及 multi_prompt 参数无效 |
+| `shot_type` | string | 否 |  | 分镜方式<br />可选值: `customize`, `intelligence`<br />当 multi_shot 参数为 true 时，当前参数必填 |
+| `prompt` | string | 否 |  | 正向文本提示词<br />- 不能超过 2500 个字符<br />- 当 multi_shot 为 false 或 shot_type 为 intelligence 时不得为空。<br />- 用 `<<<voice_1>>>` 来指定音色，序号同 voice_list 参数所引用音色的排列顺序<br />- 一次视频生成任务至多引用 2 个音色；指定音色时，sound 参数值必须为 on<br />- 语法结构越简单越好，如：男人&lt;&lt;&lt;voice_1&gt;&gt;&gt;说："你好"<br />- 当 voice_list 参数不为空且 prompt 参数中引用音色 ID 时，视频生成任务按"有指定音色"计量计费<br />不同模型版本、视频模式支持范围不同，请按所选型号的参数范围使用 |
+| `multi_prompt` | array | 否 |  | 各分镜信息，如提示词、时长等<br />通过 index、prompt、duration 定义分镜序号及提示词、时长。<br />- 最多支持6个分镜，最小支持1个分镜；<br />- 每个分镜相关内容的最大长度不超过512；<br />- 每个分镜的时长不大于当前任务的总时长，不小于1；<br />- 所有分镜的时长之和等于当前任务的总时长;<br />用key:value承载，格式如下：<br />"multi_prompt":[<br />&#123;"index":1,"prompt":"string","duration":"5"&#125;,<br />&#123;"index":1,"prompt":"string","duration":"5"&#125;<br />]<br />当 multi_shot 为 true 且 shot_type 为 customize 时当前参数必填 |
+| `negative_prompt` | string | 否 |  | 负向文本提示词<br />- 不能超过 2500 个字符<br />- 建议通过正向提示词中的负向句子补充负向提示信息 |
+| `element_list` | array | 否 |  | 参考主体列表，基于主体库中主体的 ID 配置<br />- 最多支持 3 个参考主体<br />主体分为视频角色主体和多图主体，适用范围不同。详见 [可灵「主体库 3.0」使用指南](https://docs.qingque.cn/d/home/eZQCXlb985uYAZ-c8NgyTv11X?identityId=2Cn18n4EIHT#section=h.ihbooeem1vo)。<br />- 用 key:value 承载，格式如上：<br />不同模型版本、视频模式支持范围不同，请按所选型号的参数范围使用 |
+|   `element_id` | long | 是 |  | 主体库中的主体 ID |
+| `voice_list` | array | 否 |  | 生成视频时所引用的音色的列表<br />- 一次视频生成任务至多引用 2 个音色<br />- 当 voice_list 参数不为空且 prompt 参数中引用音色 ID 时，视频生成任务按"有指定音色"计量计费<br />- voice_id 参数值通过音色定制接口返回，也可使用系统预置音色，详见音色定制相关API；非对口型 API 的 voice_id<br />- element_list 与 voice_list 互斥，不能共存<br />示例：<br />不同模型版本、视频模式支持范围不同，请按所选型号的参数范围使用 |
+| `sound` | string | 否 | off | 生成视频时是否同时生成声音<br />可选值: `on`, `off`<br />不同模型版本、视频模式支持范围不同，请按所选型号的参数范围使用 |
+| `cfg_scale` | float | 否 | 0.5 | 生成视频的自由度；值越大，模型自由度越小，与用户输入的提示词相关性越强<br />- 取值范围：[0, 1]<br />kling-v2.x 模型不支持当前参数 |
+| `mode` | string | 否 | std | 生成视频的模式<br />可选值: `std`, `pro`, `4k`<br />- `std`：标准模式（标准），基础模式，性价比高，输出视频分辨率为720P。<br />- `pro`：专家模式（高品质），高表现模式，生成视频质量更佳，输出视频分辨率为1080P。<br />- `4k`：4K模式，高表现（同pro），生成视频质量更佳，输出视频分辨率为4K。<br />不同模型版本、视频模式支持范围不同，请按所选型号的参数范围使用 |
+| `static_mask` | string | 否 |  | 静态笔刷涂抹区域（用户通过运动笔刷涂抹的 mask 图片）<br />"运动笔刷"能力包含"动态笔刷 dynamic_masks"和"静态笔刷 static_mask"两种<br />- 支持传入图片 Base64 编码或图片 URL（确保可访问，格式要求同 image 字段）<br />- 图片格式支持 `.jpg / .jpeg / .png`<br />- 图片长宽比必须与输入图片相同（即 image 字段），否则任务失败（failed）<br />- static_mask 和 dynamic_masks.mask 这两张图片的分辨率必须一致，否则任务失败（failed）<br />不同模型版本、视频模式支持范围不同，请按所选型号的参数范围使用 |
+| `dynamic_masks` | array | 否 |  | 动态笔刷配置列表<br />- 可配置多组（最多 6 组），每组包含"涂抹区域 mask"与"运动轨迹 trajectories"序列<br />不同模型版本、视频模式支持范围不同，请按所选型号的参数范围使用 |
+|   `mask` | string | 是 |  | 动态笔刷涂抹区域（用户通过运动笔刷涂抹的 mask 图片）<br />- 支持传入图片 Base64 编码或图片 URL（确保可访问，格式要求同 image 字段）<br />- 图片格式支持 .jpg / .jpeg / .png<br />- 图片长宽比必须与输入图片相同（即 image 字段），否则任务失败（failed）<br />- static_mask 和 dynamic_masks.mask 这两张图片的分辨率必须一致，否则任务失败（failed） |
+|   `trajectories` | array | 是 |  | 运动轨迹坐标序列<br />- 生成 5s 的视频，轨迹长度不超过 77，即坐标个数取值范围：[2, 77]<br />- 轨迹坐标系，以图片左下角为坐标原点<br />注1：坐标点个数越多轨迹刻画越准确，如只有 2 个轨迹点则为这两点连接的直线<br />注2：轨迹方向以传入顺序为指向，以最先传入的坐标为轨迹起点，依次链接后续坐标形成运动轨迹 |
+|     `x` | int | 是 |  | 轨迹点横坐标（在像素二维坐标系下，以输入图片 image 左下为原点的像素坐标） |
+|     `y` | int | 是 |  | 轨迹点纵坐标（在像素二维坐标系下，以输入图片 image 左下为原点的像素坐标） |
+| `camera_control` | object | 否 |  | 控制摄像机运动的协议（如未指定，模型将根据输入的文本/图片进行智能匹配）<br />不同模型版本、视频模式支持范围不同，请按所选型号的参数范围使用 |
+|   `type` | string | 是 |  | 预定义的运镜类型<br />可选值: `simple`, `down_back`, `forward_up`, `right_turn_forward`, `left_turn_forward`<br />- simple：简单运镜，此类型下可在"config"中六选一进行运镜<br />- down_back：镜头下压并后退  下移拉远，此类型下 config 参数无需填写<br />- forward_up：镜头前进并上仰  推进上移，此类型下 config 参数无需填写<br />- right_turn_forward：先右旋转后前进  右旋推进，此类型下 config 参数无需填写<br />- left_turn_forward：先左旋并前进  左旋推进，此类型下 config 参数无需填写 |
+|   `config` | object | 否 |  | 包含六个字段，用于指定摄像机在不同方向上的运动或变化<br />- 当运镜类型指定 simple 时必填，指定其他类型时不填<br />- 以下参数 6 选 1，即只能有一个参数不为 0，其余参数为 0 |
+|     `horizontal` | float | 否 |  | 水平运镜，控制摄像机在水平方向上的移动量（沿 x 轴平移）<br />- 取值范围：[-10, 10]，负值表示向左平移，正值表示向右平移 |
+|     `vertical` | float | 否 |  | 垂直运镜，控制摄像机在垂直方向上的移动量（沿 y 轴平移）<br />- 取值范围：[-10, 10]，负值表示向下平移，正值表示向上平移 |
+|     `pan` | float | 否 |  | 水平摇镜，控制摄像机在水平面上的旋转量（绕 y 轴旋转）<br />- 取值范围：[-10, 10]，负值表示绕 y 轴向左旋转，正值表示绕 y 轴向右旋转 |
+|     `tilt` | float | 否 |  | 垂直摇镜，控制摄像机在垂直面上的旋转量（沿 x 轴旋转）<br />- 取值范围：[-10, 10]，负值表示绕 x 轴向下旋转，正值表示绕 x 轴向上旋转 |
+|     `roll` | float | 否 |  | 旋转运镜，控制摄像机的滚动量（绕 z 轴旋转）<br />- 取值范围：[-10, 10]，负值表示绕 z 轴逆时针旋转，正值表示绕 z 轴顺时针旋转 |
+|     `zoom` | float | 否 |  | 变焦，控制摄像机的焦距变化，影响视野的远近<br />- 取值范围：[-10, 10]，负值表示焦距变长、视野范围变小，正值表示焦距变短、视野范围变大 |
+| `duration` | string | 否 | 5 | 生成视频时长，单位 s<br />可选值: `3`, `4`, `5`, `6`, `7`, `8`, `9`, `10`, `11`, `12`, `13`, `14`, `15`<br />不同模型版本、视频模式支持范围不同，请按所选型号的参数范围使用 |
+| `watermark_info` | object | 否 |  | 是否同时生成含水印的结果<br />- 通过enabled参数定义，具体格式如下：<br />- true 为生成，false 为不生成<br />- 暂不支持自定义水印 |
+| `callback_url` | string | 否 |  | 本次任务结果回调地址，发送给任务服务；是否投递及消息格式以实际服务行为为准<br />- 查询接口用于确认最终任务状态，请保留创建响应中的任务 ID |
+| `external_task_id` | string | 否 |  | 自定义任务 ID<br />- 用户自定义任务 ID，传入不会覆盖系统生成的任务 ID，本站任务查询仍使用创建响应返回的公开任务 ID<br />- 请注意，单用户下需要保证唯一性 |
+
+**参数格式说明**
+
+**`image`**
+
+```plaintext
+iVBORw0KGgoAAAANSUhEUgAAAAUA...
+```
+
+```plaintext
+data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA...
+```
+
+**`element_list`**
+
+```jsonc
+{
+"element_list":[
+  { "element_id": 1 },
+  { "element_id": 1 }
+]
+}
+```
+
+**`voice_list`**
+
+```jsonc
+{
+"voice_list":[
+  {"voice_id":"voice_id_1"},
+  {"voice_id":"voice_id_2"}
+]
+}
+```
+
+**`watermark_info`**
+
+```jsonc
+{
+"watermark_info": { "enabled": true }
+}
+```
+
+
+#### 请求示例
+
+```bash
+curl --location --request POST 'https://video.pinducloud.com.cn/kling/v1/videos/image2video' \
+--header 'Authorization: Bearer sk-your-pinducloud-token' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "model_name": "kling-v2-6",
+    "image": "https://p2-kling.klingai.com/kcdn/cdn-kcdn112452/kling-qa-test/multi-2.png",
+    "image_tail": "https://p2-kling.klingai.com/kcdn/cdn-kcdn112452/kling-qa-test/multi-1.png",
+    "prompt": "镜头拉远，女生微笑",
+    "negative_prompt": "",
+    "duration": "5",
+    "mode": "pro",
+    "sound": "off",
+    "callback_url": "",
+    "external_task_id": ""
+}'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, // 错误码；错误详情见 message 字段
+  "message": "string", // 错误信息
+  "request_id": "string", // 请求ID，系统生成，用于跟踪请求、排查问题
+  "data": {
+    "task_id": "string", // 任务ID，系统生成
+    "task_info": { // 任务创建时的参数信息
+      "external_task_id": "string" // 客户自定义任务ID
+    },
+    "task_status": "string", // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+    "created_at": 1722769557708, // 任务创建时间，Unix时间戳、单位ms
+    "updated_at": 1722769557708 // 任务更新时间，Unix时间戳、单位ms
+  }
+}
+```
+
+---
+
+### 查询任务（单个）
+
+```text
+GET https://video.pinducloud.com.cn/kling/v1/videos/image2video/{id}
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 否 | application/json | GET 查询不携带 JSON 请求体，可省略此头 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求示例
+
+```bash
+curl --request GET \
+  --url https://video.pinducloud.com.cn/kling/v1/videos/image2video/{task_id} \
+  --header 'Authorization: Bearer sk-your-pinducloud-token'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, // 错误码；错误详情见 message 字段
+  "message": "string", // 错误信息
+  "request_id": "string", // 请求ID，系统生成，用于跟踪请求、排查问题
+  "data": {
+    "task_id": "string", // 任务ID，系统生成
+    "task_status": "string", // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+    "task_status_msg": "string", // 任务状态信息，当任务失败时展示失败原因（如触发平台的内容风控等）
+    "watermark_info": {
+      "enabled": true
+    },
+    "task_result": {
+      "videos": [
+        {
+          "id": "string", // 生成的视频ID；全局唯一
+          "url": "string", // 生成视频的URL（请注意，为下载地址可能有有效期，请及时转存）
+          "watermark_url": "string", // 含水印视频下载URL，防盗链格式
+          "duration": "string" // 视频总时长，单位s
+        }
+      ]
+    },
+    "task_info": { // 任务创建时的参数信息
+      "external_task_id": "string" // 客户自定义任务ID
+    },
+    "final_unit_deduction": "string", // 任务服务原生积分信息；本站实际扣费以使用日志为准
+    "created_at": 1722769557708, // 任务创建时间，Unix时间戳、单位ms
+    "updated_at": 1722769557708 // 任务更新时间，Unix时间戳、单位ms
+  }
+}
+```
+
+---
+
+### 查询任务（列表）
+
+列表仅返回当前用户在该接口创建的任务。响应使用本站的 `items` 分页结构；每项 `data` 保留原生任务字段，`task_id` 为本站公开任务 ID。外层 `created_at` 使用 Unix 秒，原生 `data` 内的时间单位见字段注释。
+
+#### 查询参数
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `pageNum` | integer | 否 | 1 | 页码，范围 1–500 |
+| `pageSize` | integer | 否 | 20 | 每页数量，范围 1–500 |
+| `filter.model` | string | 否 |  | 按原版模型名称筛选 |
+| `filter.task_ids` | string | 否 |  | 按公开任务 ID 筛选；重复传入参数指定多个 ID，最多 100 个 |
+
+
+```text
+GET https://video.pinducloud.com.cn/kling/v1/videos/image2video
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 否 | application/json | GET 查询不携带 JSON 请求体，可省略此头 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求示例
+
+```bash
+curl --request GET \
+  --url 'https://video.pinducloud.com.cn/kling/v1/videos/image2video?pageNum=1&pageSize=30' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "items": [{
+    "task_id": "task-example",
+    "platform": "kling",
+    "action": "image_to_video",
+    "status": "SUCCESS",
+    "progress": "100%",
+    "fail_reason": "",
+    "created_at": 1722769557,
+    "data": {
+      "code": 0,
+      // 错误码；错误详情见 message 字段
+      "message": "string",
+      // 错误信息
+      "request_id": "string",
+      // 请求ID，系统生成，用于跟踪请求、排查问题
+      "data": {
+        "task_id": "task-example",
+        // 任务ID，系统生成
+        "task_status": "succeed",
+        // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+        "task_status_msg": "string",
+        // 任务状态信息，当任务失败时展示失败原因（如触发平台的内容风控等）
+        "task_info": {
+          // 任务创建时的参数信息
+          "external_task_id": "string" // 客户自定义任务ID
+        },
+        "task_result": {
+          "videos": [{
+            "id": "string",
+            // 生成的视频ID；全局唯一
+            "url": "string",
+            // 生成视频的URL（请注意，为下载地址可能有有效期，请及时转存）
+            "watermark_url": "string",
+            // 含水印视频下载URL，防盗链格式
+            "duration": "string" // 视频总时长，单位s
+          }]
+        },
+        "watermark_info": {
+          "enabled": true
+        },
+        "final_unit_deduction": "string",
+        // 任务服务原生积分信息；本站实际扣费以使用日志为准
+        "created_at": 1722769557708,
+        // 任务创建时间，Unix时间戳、单位ms
+        "updated_at": 1722769557708 // 任务更新时间，Unix时间戳、单位ms
+      }
+    }
+  }],
+  "total": 1,
+  "page_num": 1,
+  "page_size": 30
+}
+```

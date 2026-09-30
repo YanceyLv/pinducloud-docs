@@ -1,170 +1,135 @@
 ---
-sidebar_position: 2
-title: Kling 新版视频接口
+title: "可灵 AI 视频生成（新版接口）· 概述"
+sidebar_label: "00-概述"
 ---
 
-# Kling 新版视频接口
+# 可灵 AI 视频生成（新版接口）· 概述
 
-本页说明 Kling 新版异步视频接口。新版路径不含 `/v1`，模型名位于路径末尾；它与原版路径并行，
-请求时应使用当前 API Key 可用的模型名。
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+> 新版接口与经典接口（`/kling/v1/videos/*`）并行提供、互不影响，已接入经典接口的用户无需迁移。
 
-## 服务地址与鉴权
+---
 
-~~~bash
-export BASE_URL="https://video.pinducloud.com.cn"
-export API_KEY="sk-your-api-key"
-export TASK_ID="task-id-from-creation-response"
-~~~
+## 能力简介
 
-请求头使用 `Authorization: Bearer $API_KEY` 和 `Content-Type: application/json`。
+新版接口按能力划分端点，模型名直接写在 URL 路径中：
 
-## 接口与模型
+| 能力 | 接口路径 | 支持模型 | 说明 |
+|:---|:---|:---|:---|
+| 文生视频 | `POST /kling/text-to-video/{model}` | `kling-3.0`、`kling-3.0-turbo`、`kling-2.6`、`kling-2.5-turbo` | 根据文本提示词生成视频 |
+| 图生视频 | `POST /kling/image-to-video/{model}` | `kling-3.0`、`kling-3.0-turbo`、`kling-2.6`、`kling-2.5-turbo` | 以图片驱动生成视频 |
+| Omni 视频生成 | `POST /kling/omni-video/{model}` | `kling-3.0-omni`、`kling-o1` | 多模态全能视频生成，支持图片、视频、主体、音色等输入 |
+| 动作控制 | `POST /kling/motion-control/{model}` | `kling-3.0`、`kling-2.6` | 参考视频驱动人物动作生成 |
+| 查询任务 | `GET /kling/tasks` | — | 统一任务查询，支持批量与自定义任务 ID |
 
-| 能力 | 创建路径 | 模型 |
-| --- | --- | --- |
-| 文生视频 | `/kling/text-to-video/{model}` | `kling-3.0`、`kling-3.0-turbo`、`kling-2.6`、`kling-2.5-turbo` |
-| 图生视频 | `/kling/image-to-video/{model}` | `kling-3.0`、`kling-3.0-turbo`、`kling-2.6`、`kling-2.5-turbo` |
-| Omni 多模态生成 | `/kling/omni-video/{model}` | `kling-3.0-omni`、`kling-o1` |
-| 动作控制 | `/kling/motion-control/{model}` | `kling-3.0`、`kling-2.6` |
-| 查询任务 | `GET /kling/tasks` | 所有新版任务 |
-| 查询单个任务 | `GET /v1/videos/{task_id}` | 使用创建响应中的 `data.id` |
-| 下载视频 | `GET /v1/videos/{task_id}/content` | 使用创建响应中的 `data.id` |
+视频生成为**异步任务**：提交后立即返回任务 `id`，需通过查询任务接口轮询任务状态；任务成功后响应中包含视频下载地址，请及时下载或转存。
 
-模型和能力的组合有差异；只有 `/v1/models` 中列出的模型才可由当前 API Key 调用。
+## 标准调用流程
 
-## 通用配置
+```text
+创建任务 (POST /kling/{capability}/{model})
+        │  返回 data.id + status: "submitted"
+        ▼
+查询状态 (GET /kling/tasks?task_ids={id})   ← 轮询直至 succeeded 或 failed
+        │  返回 outputs[].url
+        ▼
+下载视频文件
+```
 
-创建请求支持 `settings` 和 `options`：
+## 接口地址
 
-| 字段 | 说明 |
-| --- | --- |
-| `settings.resolution` | 清晰度。常用值为 `720p`、`1080p`；`4k` 仅部分模型支持 |
-| `settings.aspect_ratio` | 文生视频画幅，可选 `16:9`、`9:16`、`1:1`；图生视频按首帧画幅生成 |
-| `settings.duration` | 输出时长。Kling 3.0 系列为 3 到 15 秒；部分 2.x 模型只接受 5 或 10 秒 |
-| `settings.audio` | 音频模式。`native` 生成声音，`off` 输出无声视频；仅部分模型支持 `native` |
-| `settings.multi_shot` | 是否生成多镜头，仅部分 3.0 模型支持 |
-| `options.callback_url` | 任务状态变化时的回调地址 |
-| `options.external_task_id` | 用户自定义查询 ID；同一用户下应保持唯一 |
-| `options.watermark_info.enabled` | 是否生成带水印的结果，默认 `false` |
+> **路径规则**：在平台域名后追加渠道前缀 `/kling`，再拼接可灵官方新版路径即可（新版路径无 `/v1` 前缀）。
+> 例如官方 `https://api-beijing.klingai.com/text-to-video/kling-3.0` → 平台 `https://video.pinducloud.com.cn/kling/text-to-video/kling-3.0`。
 
-`kling-3.0` 和 `kling-3.0-omni` 的多镜头提示词可使用 `镜头 n, 时长, 描述;` 格式，最多 6 个镜头，
-各镜头时长之和须与总时长一致。参数支持范围以模型和调用渠道的实际能力为准。
+## 鉴权
 
-## 文生视频
+所有请求均通过 HTTP `Authorization` 头携带 Bearer Token 进行鉴权：
 
-~~~bash
-curl --request POST "$BASE_URL/kling/text-to-video/kling-3.0" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{
-    "prompt": "A quiet seaside at sunset, waves move gently toward the shore.",
-    "settings": {
-      "resolution": "720p",
-      "aspect_ratio": "16:9",
-      "duration": 5,
-      "audio": "off",
-      "multi_shot": false
-    }
-  }'
-~~~
+```text
+Authorization: Bearer sk-your-pinducloud-token
+```
 
-`prompt` 为必填项。文本中可描述主体、动作、场景、镜头和音频；模型支持的提示词长度因型号而异。
+`sk-your-pinducloud-token` 为您在平台控制台创建的接口密钥。
 
-## 图生视频
+## 请求头
 
-通过 `contents` 提供提示词及图像素材。图像可使用 URL 或 Base64；可选的 `last_frame` 用于首尾帧生成。
+| 头部 | 必填 | 说明 |
+|:---|:---:|:---|
+| `Authorization` | 是 | `Bearer sk-your-pinducloud-token` |
+| `Content-Type` | 条件必填 | POST 请求使用 `application/json`；GET 查询可省略 |
 
-~~~bash
-curl --request POST "$BASE_URL/kling/image-to-video/kling-3.0" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{
-    "contents": [
-      {"type": "prompt", "text": "The camera slowly moves closer as the person turns toward the light."},
-      {"type": "first_frame", "url": "https://example.com/first.jpg"}
-    ],
-    "settings": {
-      "resolution": "720p",
-      "duration": 5,
-      "audio": "off"
-    }
-  }'
-~~~
+## 模型概览
 
-图片支持 JPG、JPEG、PNG；每张不超过 50 MB，宽高至少 300 像素，宽高比在 `1:2.5` 到 `2.5:1` 之间。
-参考图必须能由上游任务服务访问。首尾帧模式需要同时提供 `first_frame` 和 `last_frame`；不同模型的清晰度限制不同。
+| 模型（URL 段名） | 说明 |
+|:---|:---|
+| `kling-3.0` | 旗舰模型，支持多镜头、原生音频、最高 4K 清晰度 |
+| `kling-3.0-turbo` | 3.0 加速版，参数范围与 3.0 有差异 |
+| `kling-3.0-omni` | 3.0 全能版，多模态输入（图片/视频/主体/音色） |
+| `kling-o1` | 多模态视频模型，支持参考视频输入 |
+| `kling-2.6` | 高性价比模型，支持原生音频与指定音色 |
+| `kling-2.5-turbo` | Turbo 视频型号 |
 
-## Omni 多模态生成
+> 不同能力支持的模型与参数范围有差异，请以各接口文档中的说明为准。
 
-Omni 使用同一路径组合文本、首尾帧、参考图、参考视频、待编辑视频或主体素材。每个 `contents` 元素按
-`type` 指定输入类型；提示词可用 `id` 为素材命名，并通过 `@id` 引用。
+## 通用默认值
 
-~~~bash
-curl --request POST "$BASE_URL/kling/omni-video/kling-3.0-omni" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{
-    "contents": [
-      {"type": "prompt", "text": "Continue the scene and keep the movement of @video_1."},
-      {"type": "feature_video", "url": "https://example.com/reference.mp4", "id": "video_1"}
-    ],
-    "settings": {
-      "resolution": "720p",
-      "duration": 5,
-      "audio": "off",
-      "multi_shot": true
-    }
-  }'
-~~~
+视频生成接口采用以下协议默认值；动作控制的专用设置另见下方说明：
 
-视频素材仅支持 MP4、MOV 和 HTTP(S) 地址。可添加的图片、视频与主体数量，以及 `audio`、`multi_shot` 的组合，
-取决于所选模型；例如使用参考视频时，部分模型会限制音频或多镜头选项。
+| 参数 | 默认值 |
+|:---|:---|
+| `settings.resolution` | `720p` |
+| `settings.duration` | `5`（秒） |
+| `settings.audio` | `off` |
+| `settings.aspect_ratio` | `16:9` |
 
-## 动作控制
+动作控制的 `settings.audio` 默认为 `original`，且必须传入 `settings.character_orientation`。其输出时长由参考视频决定，不使用生成接口的默认 5 秒作为输出长度。
 
-动作控制需要一张形象参考图、一段动作参考视频和 `settings.character_orientation`。
+## 任务状态值
 
-~~~bash
-curl --request POST "$BASE_URL/kling/motion-control/kling-3.0" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{
-    "contents": [
-      {"type": "prompt", "text": "Keep the character expression natural while following the motion."},
-      {"type": "image", "url": "https://example.com/person.jpg"},
-      {"type": "video", "url": "https://example.com/motion.mp4"}
-    ],
-    "settings": {
-      "character_orientation": "video",
-      "resolution": "720p",
-      "audio": "original"
-    }
-  }'
-~~~
+| 状态 | 含义 |
+|:---|:---|
+| `submitted` | 已提交 |
+| `processing` | 处理中 |
+| `succeeded` | 生成成功 |
+| `failed` | 生成失败 |
 
-`character_orientation` 为 `image` 或 `video`。前者参考图片中人物朝向，动作视频最长 10 秒；后者参考视频人物朝向，
-动作视频最长 30 秒。输出时长由可识别的连续动作决定，不在请求中设置 `duration`。图片和动作视频需清晰展示人物，
-避免遮挡、快速剪辑或多人主体。
+## 响应格式
 
-## 查询任务
+创建任务的成功响应通常采用以下结构。查询接口的 `data` 为数组，字段详见[查询任务](/docs/video/kling-new/query)。鉴权、请求校验及任务服务错误的结构可能不同，请同时检查 HTTP 状态码和错误内容。
 
-新版任务列表通过 `/kling/tasks` 查询。`task_ids` 使用创建响应的 `data.id`；也可使用创建时传入的
-`options.external_task_id`，并通过复数查询参数 `external_task_ids` 查找。`task_ids` 和 `external_task_ids`
-不能同时使用；每个参数最多传 100 个以逗号分隔的 ID。
+```jsonc
+{
+  "code": 0,
+  "message": "string",
+  "request_id": "string",
+  "data": {} // 业务数据，字段详见对应接口
+}
+```
 
-~~~bash
-curl --get "$BASE_URL/kling/tasks" \
-  --header "Authorization: Bearer $API_KEY" \
-  --data-urlencode "task_ids=$TASK_ID"
-~~~
+| 字段 | 类型 | 说明 |
+|:---|:---|:---|
+| `code` | Int | 错误码，0 表示成功 |
+| `message` | String | 响应信息，成功时可能为空 |
+| `request_id` | String | 请求 ID，用于跟踪、排查问题；部分响应为空或不返回 |
+| `data` | Object / Array | 创建任务为对象，查询列表为数组 |
 
-任务状态为 `submitted`、`processing`、`succeeded` 或 `failed`。成功后从 `data[].outputs[].url` 获取视频地址；
-下载链接有时效，请及时下载或转存。
+## 回调通知
 
-## 下载视频
+创建任务接口接受 `options.callback_url` 参数，并将其发送给任务服务。回调是否可用及通知格式以任务服务实际行为为准，最终状态请通过本站查询接口确认。
 
-~~~bash
-curl --fail --location "$BASE_URL/v1/videos/$TASK_ID/content" \
-  --header "Authorization: Bearer $API_KEY" \
-  --output generated.mp4
-~~~
+回调中可能包含任务服务自身的任务标识，不能直接当作本站公开任务 ID 使用。请保存创建响应中的 `data.id`，并在需要时使用 `options.external_task_id` 关联业务记录。
+
+## PinduCloud 调用说明
+
+- 服务地址为 `https://video.pinducloud.com.cn`，鉴权使用本站创建的 API Key。
+- 视频任务提交成功表示任务已受理；请保存响应返回的任务 ID，并使用同一用户的 API Key 查询最终状态。
+- 本站查询仅返回当前用户可访问的任务；任务数据中的可选字段取决于任务服务返回的结果。
+- 原生响应中的 `credits`、`final_unit_deduction` 等积分字段不代表本站最终扣费，实际费用以站内使用日志为准。
+
+## 相关文档
+
+- [文生视频](/docs/video/kling-new/text-to-video)
+- [图生视频](/docs/video/kling-new/image-to-video)
+- [Omni视频生成](/docs/video/kling-new/omni-video)
+- [动作控制](/docs/video/kling-new/motion-control)
+- [查询任务](/docs/video/kling-new/query)

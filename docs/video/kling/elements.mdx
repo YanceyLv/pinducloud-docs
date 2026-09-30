@@ -1,0 +1,356 @@
+---
+title: "主体"
+sidebar_label: "15-主体管理"
+---
+
+# 主体
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+POST 创建或管理请求可通过 `model_name` 选择账号已开通的可灵型号；未传时读取 `model`，两者都省略时使用 `kling-v1`。即使接口参数表未列出模型字段，也需确保账号已开通所选型号及对应能力。
+
+### 创建主体
+
+```text
+POST https://video.pinducloud.com.cn/kling/v1/general/advanced-custom-elements
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 是 | application/json | 数据交换格式 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求体
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `element_name` | string | 是 |  | 主体名称<br />不能超过20个字符 |
+| `element_description` | string | 是 |  | 主体描述<br />不能超过100个字符 |
+| `reference_type` | string | 是 |  | 主体参考方式<br />可选值: `video_refer`, `image_refer`<br />video_refer: 视频角色主体，此时将参考element_video_list定义主体外表<br />image_refer: 多图主体，此时将参考element_image_list定义主体外表<br />通过视频定制的主体和通过图片定制的主体的可用范围不同，请按本页参数说明和所选型号的能力范围使用。 |
+| `element_image_list` | object | 否 | — | 主体参考图，可通过多张图片设定主体及其细节<br />包括正面参考图和其他角度或特写参考图，其中：至少包括1张正面参考图，由frontal_image参数定义；需包括1～3张其他参考图，需与正面参考图有差异，由image_url参数定义<br />用key:value承载，如下：<br />支持传入图片Base64编码或图片URL（确保可访问）<br />图片格式支持.jpg / .jpeg / .png。图片文件大小不能超过10MB，图片宽高尺寸不小于300px，图片宽高比要在1:2.5 ~ 2.5:1之间<br />reference_type参数值为 image_refer 时，当前参数必填 |
+| `element_video_list` | object | 否 | — | 主体参考视频，可通过视频设定主体及其细节<br />可上传有声视频，有声视频包含人声则触发音色定制（定制+入音色库+与主体绑定）<br />暂时仅支持通过视频定制写实风格的人形形象<br />参考视频时当前参数必填，参考图片时当前参数无效<br />用key:value承载。视频格式仅支持MP4/MOV。仅支持时长介于3s～8s之间、宽高比例需为16:9或9:16的1080P视频。至多仅支持上传1段视频，视频大小不超过200MB。video_url参数值不得为空<br />视频角色主体仅适用于支持该主体类型的 Omni 型号；请通过本站提供的 `kling-v3-omni` 等已开通型号调用 |
+| `element_voice_id` | string | 否 | — | 主体音色ID，可绑定音色库中已有音色<br />- 当前参数为空时，当前主体不绑定音色<br />- 为多图主体绑定音色时，仅支持人物形象主体或类人形象主体<br />- 可通过[音色管理接口](/docs/video/kling/voices)获取 ID |
+| `tag_list` | array | 否 | — | 为主体配置标签，一个主体可以配置多个标签<br />用key:value承载。tag的ID与名称：o_101 热梗, o_102 人物, o_103 动物, o_104 道具, o_105 服饰, o_106 场景, o_107 特效, o_108 其他<br />tag和tag_id的对应关系如下：<br />tag_id — tag_name<br />o_101 — 热梗<br />o_102 — 人物<br />o_103 — 动物<br />o_104 — 道具<br />o_105 — 服饰<br />o_106 — 场景<br />o_107 — 特效<br />o_108 — 其他 |
+| `callback_url` | string | 否 |  | 本次任务结果回调地址，发送给任务服务；是否投递及消息格式以实际服务行为为准<br />- 查询接口用于确认最终任务状态，请保留创建响应中的任务 ID |
+| `external_task_id` | string | 否 |  | 自定义任务ID。用户自定义任务ID，传入不会覆盖系统生成的任务ID，本站任务查询仍使用创建响应返回的公开任务 ID。请注意，单用户下需要保证唯一性 |
+
+**参数格式说明**
+
+**`element_image_list`**
+
+```jsonc
+{
+  "element_image_list": {
+    "frontal_image": "image_url_0",
+    "refer_images": [{ "image_url": "image_url_1" }]
+  }
+}
+```
+
+**`element_video_list`**
+
+```jsonc
+{
+  "element_video_list": {
+    "refer_videos": [{ "video_url": "video_url_1" }]
+  }
+}
+```
+
+**`tag_list`**
+
+```jsonc
+{
+"tag_list": [ { "tag_id": "o_101" }, { "tag_id": "o_102" } ]
+}
+```
+
+#### 请求示例
+
+```bash
+curl --request POST \
+  --url 'https://video.pinducloud.com.cn/kling/v1/general/advanced-custom-elements' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model_name": "kling-v3-omni",
+    "element_name": "示例人物",
+    "element_description": "同一人物的正面与侧面参考图",
+    "reference_type": "image_refer",
+    "element_image_list": {
+      "frontal_image": "https://example.com/front.jpg",
+      "refer_images": [{"image_url": "https://example.com/side.jpg"}]
+    }
+  }'
+```
+
+请替换素材地址，并使用账号已开通且支持主体创建的型号。保存响应中的 `data.task_id`，等待主体任务成功后再引用结果中的 `element_id`；任务 ID 与主体 ID 是不同标识。
+
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, //错误码；错误详情见 message 字段
+  "message": "string", //错误信息
+  "request_id": "string", //请求ID，系统生成，用于跟踪请求、排查问题
+  "data": {
+    "task_id": "string", //任务ID，系统生成
+    "task_info": { //任务创建时的参数信息
+      "external_task_id": "string" //客户自定义任务ID
+    },
+    "task_status": "string", //任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+    "created_at": 1722769557708, //任务创建时间，Unix时间戳、单位ms
+    "updated_at": 1722769557708 //任务更新时间，Unix时间戳、单位ms
+  }
+}
+```
+
+---
+
+### 查询自定义主体（单个）
+
+```text
+GET https://video.pinducloud.com.cn/kling/v1/general/advanced-custom-elements/{id}
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 否 | application/json | GET 查询不携带 JSON 请求体，可省略此头 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, //错误码；错误详情见 message 字段
+  "message": "string", //错误信息
+  "request_id": "string", //请求ID，系统生成，用于跟踪请求、排查问题
+  "data": {
+    "task_id": "string", //任务ID，系统生成
+    "task_status": "string", //任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+    "task_status_msg": "string", //任务状态信息，当任务失败时展示失败原因（如触发平台的内容风控等）
+    "task_info": { //任务创建时的参数信息
+      "external_task_id": "string" //客户自定义任务ID
+    },
+    "task_result": {
+      "elements": [
+        {
+          "element_id": 0, //主体ID
+          "element_name": "string", //主体名称
+          "element_description": "string", //主体描述
+          "reference_type": "video_refer", //参考方式
+          "element_image_list": {},
+          "element_video_list": {},
+          "element_voice_info": {
+            "voice_id": "string", //定制的音色的ID；全局唯一
+            "voice_name": "string", //定制的音色的名称
+            "trial_url": "string", //定制的音色的试听音频下载URL
+            "owned_by": "kling" //音色来源，kling为官方音色库，数字为创作者ID
+          },
+          "tag_list": [],
+          "owned_by": "kling", //主体来源，kling为官方主体库，其他为创作者ID
+          "status": "succeed" //主体状态，正常时为succeed，已被删除时为 deleted
+        }
+      ]
+    },
+    "final_unit_deduction": "string", //任务服务原生积分信息；本站实际扣费以使用日志为准
+    "created_at": 1722769557708, //任务创建时间，Unix时间戳、单位ms
+    "updated_at": 1722769557708 //任务更新时间，Unix时间戳、单位ms
+  }
+}
+```
+
+---
+
+### 查询自定义主体（列表）
+
+列表仅返回当前用户在该接口创建的任务。响应使用本站的 `items` 分页结构；每项 `data` 保留原生任务字段，`task_id` 为本站公开任务 ID。外层 `created_at` 使用 Unix 秒，原生 `data` 内的时间单位见字段注释。
+
+#### 查询参数
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `pageNum` | integer | 否 | 1 | 页码，范围 1–500 |
+| `pageSize` | integer | 否 | 20 | 每页数量，范围 1–500 |
+| `filter.model` | string | 否 |  | 按原版模型名称筛选 |
+| `filter.task_ids` | string | 否 |  | 按公开任务 ID 筛选；重复传入参数指定多个 ID，最多 100 个 |
+
+
+```text
+GET https://video.pinducloud.com.cn/kling/v1/general/advanced-custom-elements
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 否 | application/json | GET 查询不携带 JSON 请求体，可省略此头 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 响应示例
+
+```jsonc
+{
+  "items": [{
+    "task_id": "task-example",
+    "platform": "kling",
+    "action": "advanced_custom_elements",
+    "status": "SUCCESS",
+    "progress": "100%",
+    "fail_reason": "",
+    "created_at": 1722769557,
+    "data": {
+      "code": 0,
+      //错误码；错误详情见 message 字段
+      "message": "string",
+      //错误信息
+      "request_id": "string",
+      //请求ID，系统生成，用于跟踪请求、排查问题
+      "data": {
+        "task_id": "task-example",
+        //任务ID，系统生成
+        "task_status": "succeed",
+        //任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+        "task_status_msg": "string",
+        //任务状态信息，当任务失败时展示失败原因（如触发平台的内容风控等）
+        "task_info": {
+          //任务创建时的参数信息
+          "external_task_id": "string" //客户自定义任务ID
+        },
+        "task_result": {
+          "elements": [{
+            "element_id": 0,
+            "element_name": "string",
+            "element_description": "string",
+            "reference_type": "video_refer",
+            "element_image_list": {},
+            "element_video_list": {},
+            "element_voice_info": {},
+            "tag_list": [],
+            "owned_by": "kling",
+            //主体来源，kling为官方主体库，其他为创作者ID
+            "status": "succeed" //主体状态，正常时为succeed，已被删除时为 deleted
+          }]
+        },
+        "final_unit_deduction": "string",
+        //任务服务原生积分信息；本站实际扣费以使用日志为准
+        "created_at": 1722769557708,
+        //任务创建时间，Unix时间戳、单位ms
+        "updated_at": 1722769557708 //任务更新时间，Unix时间戳、单位ms
+      }
+    }
+  }],
+  "total": 1,
+  "page_num": 1,
+  "page_size": 20
+}
+```
+
+---
+
+### 查询官方主体（列表）
+
+```text
+GET https://video.pinducloud.com.cn/kling/v1/general/advanced-presets-elements
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 否 | application/json | GET 查询不携带 JSON 请求体，可省略此头 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, //错误码；错误详情见 message 字段
+  "message": "string", //错误信息
+  "request_id": "string", //请求ID，系统生成，用于跟踪请求、排查问题
+  "data": [
+    {
+      "task_id": "string", //任务ID，系统生成
+      "task_status": "string", //任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+      "task_status_msg": "string", //任务状态信息，当任务失败时展示失败原因（如触发平台的内容风控等）
+      "task_info": { //任务创建时的参数信息
+        "external_task_id": "string" //客户自定义任务ID
+      },
+      "task_result": {
+        "elements": [
+          {
+            "element_id": 0,
+            "element_name": "string",
+            "element_description": "string",
+            "reference_type": "video_refer",
+            "element_image_list": {},
+            "element_video_list": {},
+            "element_voice_info": {},
+            "tag_list": [],
+            "owned_by": "kling", //主体来源，kling为官方主体库，其他为创作者ID
+            "status": "succeed" //主体状态，正常时为succeed，已被删除时为 deleted
+          }
+        ]
+      },
+      "final_unit_deduction": "string", //任务服务原生积分信息；本站实际扣费以使用日志为准
+      "created_at": 1722769557708, //任务创建时间，Unix时间戳、单位ms
+      "updated_at": 1722769557708 //任务更新时间，Unix时间戳、单位ms
+    }
+  ]
+}
+```
+
+---
+
+### 删除自定义主体
+
+```text
+POST https://video.pinducloud.com.cn/kling/v1/general/delete-elements
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 是 | application/json | 数据交换格式 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求体
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `element_id` | string | 是 |  | 要删除的主体ID，仅支持删除自定义主体 |
+
+#### 请求示例
+
+```bash
+curl --request POST \
+  --url 'https://video.pinducloud.com.cn/kling/v1/general/delete-elements' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model_name": "kling-v3-omni",
+    "element_id": "element-id-from-success-result"
+  }'
+```
+
+将 `element_id` 替换为主体创建成功后的实际 ID。创建成功不代表所有型号都能引用该主体，应选择支持该主体类型的型号。若返回主体不存在或无权限，请保留主体 ID 和请求 ID 联系支持，避免重复创建。
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, //错误码；错误详情见 message 字段
+  "message": "string", //错误信息
+  "request_id": "string", //请求ID，系统生成，用于跟踪请求、排查问题
+  "data": {
+    "task_id": "string", //任务ID，系统生成
+    "task_status": "string" //任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+  }
+}
+```

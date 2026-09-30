@@ -1,0 +1,176 @@
+---
+title: "参考生视频"
+sidebar_label: "03-参考生视频"
+---
+
+# 参考生视频
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+以参考图片/视频的主体一致性生成视频，支持主体库功能。该接口包含两种调用方式：**使用主体调用**（通过 `subjects` 参数）和**非主体调用**（通过 `images`/`videos` 参数）。
+
+```text
+POST https://video.pinducloud.com.cn/vidu/ent/v2/reference2video
+```
+
+---
+
+## 请求参数
+
+### 请求头
+
+| 头部 | 必填 | 说明 |
+|:---|:---:|:---|
+| `Content-Type` | 是 | `application/json` |
+| `Authorization` | 是 | `Bearer sk-your-pinducloud-token` |
+
+---
+
+## 方式一：使用主体调用
+
+通过 `subjects` 参数传入主体信息，在提示词中通过 `@主体名称` 引用。
+
+### 请求体
+
+| 参数 | 子参数 | 类型 | 必填 | 说明 |
+|:---|:---|:---|:---:|:---|
+| `model` | | String | 是 | 模型名称。可选值：`viduq3-turbo`、`viduq3`、`viduq2-pro`、`viduq2`、`viduq1`、`vidu2.0`。<br />- `viduq3-turbo`：支持智能切镜，音画同出，生成速度最快<br />- `viduq3`：支持智能切镜，音画同出，多机位一致性更出色<br />- `viduq2-pro`：支持参考视频，视频编辑，视频替换<br />- `viduq2`：动态效果好，细节丰富<br />- `viduq1`：画面清晰，平滑转场，运镜稳定<br />- `vidu2.0`：生成速度快 |
+| `auto_subjects` | | Bool | 可选 | 是否使用智能主体库能力。默认 `false`。 |
+| `subjects` | | Array | 是 | 主体列表。q3/q2/q1/2.0 模型仅支持图片和文字主体（最多 7 个）；q2-pro 可额外使用视频主体（图片/文字最多 4 个，视频最多 2 个）。 |
+| | `name` | String | 是 | 主体名称。后续在 prompt 中通过 `@name` 引用。 |
+| | `images` | Array[String] | 可选 | 主体图片 URL 或 Base64。最多 3 张。与 `videos` 至少填一个。<br />支持 png、jpeg、jpg、webp 格式，Base64 须含内容类型前缀。 |
+| | `videos` | Array[String] | 可选 | 主体视频 URL 或 Base64。与 `images` 至少填一个。<br />仅 `viduq2-pro` 支持，支持 1 个 5 秒视频。<br />支持 mp4、avi、mov 格式。 |
+| | `voice_id` | String | 可选 | 音色 ID。为空时系统自动推荐。q3 参考生模型不生效。 |
+| | `server_id` | String | 可选 | 通过创建主体 API 获取的主体 ID，使用已有主体时必传。 |
+| `prompt` | | String | 是 | 文本提示词。字符长度不超过 5000 个字符。<br />使用 subjects 时可通过 `@主体name` 引用，例如：`"@角色A 和 @角色B 在一起吃火锅"` |
+| `audio` | | Bool | 可选 | 是否使用音视频直出。viduq3、viduq3-turbo 默认 `true`，其他模型默认 `false`。 |
+| `audio_type` | | String | 可选 | 音频类型，`audio` 为 `true` 时生效。默认 `all`。<br />可选值：`all`（音效+人声）、`speech_only`（仅人声）、`sound_effect_only`（仅音效） |
+| `duration` | | Int | 可选 | 视频时长（秒）：<br />- `viduq3-turbo`、`viduq3`：默认 5，可选 3–16<br />- `viduq2-pro`：默认 5，可选 1–10；本站不接受 0 秒<br />- `viduq2`：默认 5，可选 1–10<br />- `viduq1`：默认 5，可选 5<br />- `vidu2.0`：默认 4，可选 4 |
+| `seed` | | Int | 可选 | 随机种子。不传或传 0 时使用随机数。 |
+| `aspect_ratio` | | String | 可选 | 宽高比。默认 `16:9`，可选值：`16:9`、`9:16`、`1:1`。<br />注：q2 模型支持任意宽高比 |
+| `resolution` | | String | 可选 | 分辨率：<br />- `viduq3-turbo`、`viduq3`（3–16s）：默认 720p，可选 540p、720p、1080p<br />- `viduq2`、`viduq2-pro`：默认 720p，可选 540p、720p、1080p<br />- `viduq1`：默认 1080p，可选 1080p<br />- `vidu2.0`：默认 360p，可选 360p、720p |
+| `movement_amplitude` | | String | 可选 | 运动幅度。默认 `auto`。注：q2、q3 模型不生效 |
+| `off_peak` | | Bool | 可选 | 错峰模式。默认 `false`。<br />注：q3 模型 audio 为 true 时支持错峰；q2/q1/2.0 系列 audio 为 false 时支持错峰 |
+| `watermark` | | Bool | 可选 | 是否添加水印。默认不加。 |
+| `wm_position` | | Int | 可选 | 水印位置。`1`：左上，`2`：右上，`3`：右下（默认），`4`：左下 |
+| `wm_url` | | String | 可选 | 自定义水印图片 URL。 |
+| `payload` | | String | 可选 | 透传参数。最多 1048576 个字符。 |
+| `meta_data` | | String | 可选 | 元数据标识，JSON 格式字符串，透传字段。 |
+| `callback_url` | | String | 可选 | 回调地址。 |
+
+### 请求示例（主体调用）
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer sk-your-pinducloud-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "viduq3",
+    "subjects": [
+      {
+        "name": "角色A",
+        "images": ["https://example.com/subject1.png"]
+      },
+      {
+        "name": "角色B",
+        "images": ["https://example.com/subject2.png"]
+      }
+    ],
+    "prompt": "@角色A 和 @角色B 在一起吃火锅",
+    "duration": 8,
+    "audio": true
+  }' \
+  https://video.pinducloud.com.cn/vidu/ent/v2/reference2video
+```
+
+---
+
+## 方式二：非主体调用
+
+直接传入参考图片/视频，模型自动提取主体一致性生成视频。
+
+### 请求体
+
+| 参数 | 类型 | 必填 | 说明 |
+|:---|:---|:---:|:---|
+| `model` | String | 是 | 模型名称。可选值：`viduq3-mix`、`viduq3-turbo`、`viduq3`、`viduq2-pro`、`viduq2`、`viduq1`、`vidu2.0`。<br />- `viduq3-mix`：画面质感强，智能切镜，音画同出，均衡性最强 |
+| `images` | Array[String] | 是 | 参考图片。支持 1–7 张图片（URL 或 Base64）。<br />注：`viduq2-pro` 模型上传视频时最多 1–4 张图<br />支持 png、jpeg、jpg、webp 格式，像素不小于 128×128 |
+| `videos` | Array[String] | 可选 | 参考视频。仅 `viduq2-pro` 支持。<br />最多 1 个 8 秒视频或 2 个 5 秒视频。<br />支持 mp4、avi、mov 格式，大小不超过 100M |
+| `prompt` | String | 是 | 文本提示词。字符长度不超过 2000 个字符。 |
+| `audio` | Bool | 可选 | 是否使用音视频直出。非主体调用时仅 q3 模型支持，默认 `true`。 |
+| `bgm` | Bool | 可选 | 是否添加背景音乐。默认 `false`。<br />注：q2 系列 duration 为 9s/10s 时不生效；q3 系列不生效 |
+| `duration` | Int | 可选 | 视频时长（秒）：<br />- `viduq3-turbo`、`viduq3-mix`：默认 5，可选 3–16<br />- `viduq3`：默认 5，可选 3–16<br />- `viduq2-pro`：默认 5，可选 1–10；本站不接受 0 秒<br />- `viduq2`：默认 5，可选 1–10<br />- `viduq1`：默认 5，可选 5<br />- `vidu2.0`：默认 4，可选 4 |
+| `seed` | Int | 可选 | 随机种子。 |
+| `aspect_ratio` | String | 可选 | 宽高比。默认 `16:9`，可选值：`16:9`、`9:16`、`4:3`、`3:4`、`1:1`。<br />注：`4:3`、`3:4` 仅支持 q2 系列模型 |
+| `resolution` | String | 可选 | 分辨率：<br />- `viduq3-mix`（3–16s）：默认 720p，可选 720p、1080p<br />- `viduq3-turbo`（3–16s）：默认 720p，可选 540p、720p、1080p<br />- `viduq3`（3–16s）：默认 720p，可选 540p、720p、1080p<br />- `viduq2`、`viduq2-pro`：默认 720p，可选 540p、720p、1080p<br />- `viduq1`：默认 1080p，可选 1080p<br />- `vidu2.0`：默认 360p，可选 360p、720p |
+| `movement_amplitude` | String | 可选 | 运动幅度。默认 `auto`。注：q2、q3 系列不生效 |
+| `off_peak` | Bool | 可选 | 错峰模式。默认 `false`。<br />注：viduq3-mix 不支持错峰 |
+| `watermark` | Bool | 可选 | 是否添加水印。 |
+| `wm_position` | Int | 可选 | 水印位置。 |
+| `wm_url` | String | 可选 | 自定义水印图片 URL。 |
+| `payload` | String | 可选 | 透传参数。 |
+| `meta_data` | String | 可选 | 元数据标识。 |
+| `callback_url` | String | 可选 | 回调地址。 |
+
+### 请求示例（非主体调用）
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer sk-your-pinducloud-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "viduq3-mix",
+    "images": ["https://example.com/ref1.png", "https://example.com/ref2.png"],
+    "prompt": "Santa Claus and the bear hug by the lakeside.",
+    "duration": 5,
+    "aspect_ratio": "3:4",
+    "resolution": "720p"
+  }' \
+  https://video.pinducloud.com.cn/vidu/ent/v2/reference2video
+```
+
+---
+
+## 响应参数
+
+| 字段 | 类型 | 说明 |
+|:---|:---|:---|
+| `task_id` | String | 任务 ID |
+| `state` | String | 处理状态：`created`、`queueing`、`processing`、`success`、`failed` |
+| `model` | String | 本次调用的模型名称 |
+| `prompt` | String | 提示词 |
+| `images` | Array[String] | 图像参数 |
+| `videos` | Array[String] | 视频参数（非主体调用 viduq2-pro 时返回） |
+| `duration` | Int | 视频时长 |
+| `seed` | Int | 随机种子 |
+| `aspect_ratio` | String | 宽高比 |
+| `resolution` | String | 分辨率 |
+| `bgm` | Bool | 是否添加背景音乐 |
+| `audio` | Bool | 是否开启音视频直出 |
+| `audio_type` | String | 音频类型 |
+| `movement_amplitude` | String | 运动幅度 |
+| `payload` | String | 透传参数 |
+| `off_peak` | Bool | 是否使用错峰模式 |
+| `credits` | Int | 任务服务原生积分信息；本站实际扣费以使用日志为准 |
+| `watermark` | Bool | 是否使用水印 |
+| `created_at` | String | 任务创建时间 |
+
+---
+
+## 响应示例
+
+```jsonc
+{
+  "task_id": "{task_id}",
+  "state": "created",
+  "model": "viduq3-mix",
+  "images": ["https://example.com/ref1.png", "https://example.com/ref2.png"],
+  "prompt": "Santa Claus and the bear hug by the lakeside.",
+  "duration": 5,
+  "seed": 123456,
+  "aspect_ratio": "3:4",
+  "resolution": "720p",
+  "credits": 8,
+  "created_at": "2025-01-01T15:41:31.968916Z"
+}
+```

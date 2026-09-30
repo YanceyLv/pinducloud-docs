@@ -1,0 +1,169 @@
+---
+title: "动作迁移与视频换人"
+sidebar_label: "06-动作迁移与视频换人"
+---
+
+# 动作迁移与视频换人
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+基于一张人物图片和一段参考视频，实现「动作迁移」或「视频换人」两类人物动画能力（wan2.2-animate 系列）。
+
+---
+
+### 模型能力对比
+
+| 模型 | 能力 | 适用场景 |
+|:---|:---|:---|
+| `wan2.2-animate-move` | **动作迁移**：将参考视频中的动作和表情迁移到图片人物上，让图片人物"动起来" | 舞蹈复刻、高难度肢体动作复刻、影视表演复刻，可作为动作捕捉的低成本替代方案 |
+| `wan2.2-animate-mix` | **视频换人**：将视频中的主角替换为图片中的角色，同时保留原视频的场景、光照和色调（不改变原始视频的动作、表情及环境） | 二次创作、影视后期制作等角色替换场景 |
+
+两个模型共用同一提交端点，通过 `model` 字段区分；均提供两种服务模式（`parameters.mode`）：
+
+| 模式 | 说明 |
+|:---|:---|
+| `wan-std` 标准模式 | 生成速度快、性价比高，适合快速预览和基础动画场景 |
+| `wan-pro` 专业模式 | 动画流畅度更高、画质更优、效果更佳，处理时间和费用相应增加 |
+
+---
+
+### 创建任务
+
+```text
+POST https://video.pinducloud.com.cn/ali/api/v1/services/aigc/image2video/video-synthesis
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 是 | application/json | 数据交换格式 |
+| `Authorization` | string | 是 |  | 鉴权信息，`Bearer sk-your-pinducloud-token` |
+
+> 官方要求的 `X-DashScope-Async: enable` 头由平台自动补充，调用时**无需携带**；携带亦兼容。
+
+#### 请求体
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `model` | string | 是 |  | `wan2.2-animate-move`（动作迁移）或 `wan2.2-animate-mix`（视频换人） |
+| `input` | object | 是 |  | 输入参数对象 |
+| `input.image_url` | string | 是 |  | 人物图片的公网可访问 HTTP/HTTPS URL。URL 含中文等非 ASCII 字符时须先进行 URL 编码 |
+| `input.video_url` | string | 是 |  | 参考视频的公网可访问 HTTP/HTTPS URL。同样须 URL 编码。官方建议使用高分辨率、高帧率的参考视频以提升生成画质 |
+| `input.watermark` | boolean | 否 | false | 是否在视频右下角添加 AI 生成水印。`true` 添加，`false` 不添加 |
+| `parameters` | object | 是 |  | 参数对象 |
+| `parameters.mode` | string | 是 |  | 服务模式：`wan-std`（标准）/ `wan-pro`（专业），差异见上方模式对比表 |
+| `parameters.check_image` | boolean | 否 | true | 是否在处理前对输入图片进行检测。`true` 检测；`false` 跳过检测直接处理 |
+
+#### 输入素材要求
+
+move / mix 两个模型要求相同：
+
+| 项目 | 图片 `image_url` | 视频 `video_url` |
+|:---|:---|:---|
+| 格式 | JPG、JPEG、PNG、BMP、WEBP | MP4、AVI、MOV |
+| 尺寸 | 宽高均在 [200, 4096] 像素，宽高比 1:3 ~ 3:1 | 宽高均在 [200, 2048] 像素，宽高比 1:3 ~ 3:1 |
+| 大小 | ≤ 5 MB | ≤ 200 MB |
+| 时长 | — | 2 ~ 30 秒 |
+
+**人物与效果优化建议（官方）**：
+
+- 输入图片与参考视频中的人物画幅占比相近；
+- 保持图片和视频中人物的身材比例一致；
+- 使用高清素材，避免模糊图片和低帧率视频，确保细节识别准确。
+
+#### 请求示例：动作迁移（标准模式）
+
+```bash
+curl --request POST \
+  --url 'https://video.pinducloud.com.cn/ali/api/v1/services/aigc/image2video/video-synthesis' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model": "wan2.2-animate-move",
+    "input": {
+      "image_url": "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250919/adsyrp/move_input_image.jpeg",
+      "video_url": "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250919/kaakcn/move_input_video.mp4"
+    },
+    "parameters": {
+      "mode": "wan-std"
+    }
+  }'
+```
+
+#### 请求示例：视频换人（专业模式）
+
+```bash
+curl --request POST \
+  --url 'https://video.pinducloud.com.cn/ali/api/v1/services/aigc/image2video/video-synthesis' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model": "wan2.2-animate-mix",
+    "input": {
+      "image_url": "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250919/adsyrp/move_input_image.jpeg",
+      "video_url": "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20250919/kaakcn/move_input_video.mp4"
+    },
+    "parameters": {
+      "mode": "wan-pro"
+    }
+  }'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "output": {
+    "task_status": "PENDING",
+    "task_id": "0385dc79-5ff8-4d82-bcb6-xxxxxx"
+  },
+  "request_id": "4909100c-7b5a-9f92-bfe5-xxxxxx"
+}
+```
+
+| 字段 | 类型 | 说明 |
+|:---|:---|:---|
+| `output.task_id` | string | 本站公开任务 ID，用于查询本站保留的任务记录 |
+| `output.task_status` | string | 任务状态，创建成功时为 `PENDING` |
+| `request_id` | string | 请求唯一标识，用于溯源排查 |
+
+---
+
+### 结果与用量说明
+
+任务成功后，查询接口返回的视频地址位于 `output.results.video_url`（MP4，H.264 编码，有效期以实际返回地址为准），`usage` 字段为计费依据：
+
+```jsonc
+{
+  "output": {
+    "task_status": "SUCCEEDED",
+    "results": {
+      "video_url": "https://.../xxxxx.mp4?Expires=xxx"
+    }
+  },
+  "usage": {
+    "video_duration": 5.2,
+    "video_ratio": "standard"
+  }
+}
+```
+
+| 字段 | 类型 | 说明 |
+|:---|:---|:---|
+| `usage.video_duration` | float | 本次成功生成的视频时长，单位：秒 |
+| `usage.video_ratio` | string | 服务模式标识：`standard`（对应 `wan-std`）/ `pro`（对应 `wan-pro`） |
+
+**计费说明**：本站提交时预扣额度，任务完成后按配置的模型价格及可用视频时长结算。`wan-std` 与 `wan-pro` 的价格以本站显示为准；视频任务失败后退还预扣额度。
+
+---
+
+### 查询任务
+
+创建任务后，通过 `task_id` 轮询任务状态及结果：
+
+```text
+GET https://video.pinducloud.com.cn/ali/api/v1/tasks/{task_id}
+```
+
+详细的响应结构、任务状态枚举与轮询建议参见 [09-查询任务](/docs/video/wan/query)。

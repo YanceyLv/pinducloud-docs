@@ -1,0 +1,191 @@
+---
+title: "文生视频"
+sidebar_label: "01-文生视频"
+---
+
+# 文生视频
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+根据文本提示词生成视频。wan2.7/wan2.6 系列支持自动配音（或传入音频实现声画同步）与多镜头叙事，最高 1080P、最长 15 秒。
+
+官方将文生视频拆分为两套请求协议，提交端点相同、请求体参数不同：
+
+- **新版协议**（`wan2.7-t2v` 系列）：以 `resolution`（分辨率档位）+ `ratio`（宽高比）控制输出规格；
+- **旧版协议**（`wan2.6` 及更早模型）：以 `size`（具体像素「宽*高」）控制输出规格。
+
+---
+
+### 模型规格对比
+
+| 模型 | 协议 | 分辨率控制 | 时长（秒） | 音频 | 多镜头 | prompt 上限 |
+|:---|:---|:---|:---|:---|:---|:---|
+| `wan2.7-t2v`、`wan2.7-t2v-2026-06-12` | 新版 | `resolution` + `ratio`（720P/1080P） | 2–15 整数，默认 5 | 有声（自动配音或 `audio_url`） | 支持，prompt 自然语言控制 | 5000 字符 |
+| `wan2.6-t2v` | 旧版 | `size`（720P/1080P 档） | 2–15 整数，默认 5 | 有声（自动配音或 `audio_url`） | 支持，需 `shot_type="multi"` | 1500 字符 |
+| `wan2.6-t2v-us` | 旧版 | `size`（720P/1080P 档） | 5 或 10，默认 5 | 同 wan2.6 | 同 wan2.6 | 1500 字符 |
+| `wan2.5-t2v-preview` | 旧版 | `size`（480P/720P/1080P 档） | 5 或 10，默认 5 | 有声（自动配音或 `audio_url`） | 不支持 | 1500 字符 |
+| `wan2.2-t2v-plus` | 旧版 | `size`（480P/1080P 档） | 固定 5，不可传 | 无声 | 不支持 | 800 字符 |
+| `wanx2.1-t2v-turbo` | 旧版 | `size`（480P/720P 档） | 固定 5，不可传 | 无声 | 不支持 | 800 字符 |
+| `wanx2.1-t2v-plus` | 旧版 | `size`（仅 720P 档） | 固定 5，不可传 | 无声 | 不支持 | 800 字符 |
+
+---
+
+### 创建任务
+
+```text
+POST https://video.pinducloud.com.cn/ali/api/v1/services/aigc/video-generation/video-synthesis
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 是 | application/json | 数据交换格式 |
+| `Authorization` | string | 是 |  | 鉴权信息，`Bearer sk-your-pinducloud-token` |
+
+> 官方要求的 `X-DashScope-Async: enable` 头由平台自动补充，调用时无需携带。
+
+#### 请求体 — 新版协议（wan2.7 系列）
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `model` | string | 是 |  | `wan2.7-t2v`、`wan2.7-t2v-2026-06-12` |
+| `input.prompt` | string | 是 |  | 文本提示词，中英文均可，≤5000 字符，超出自动截断 |
+| `input.negative_prompt` | string | 否 |  | 反向提示词，描述不希望出现的内容，≤500 字符 |
+| `input.audio_url` | string | 否 | 不传则自动配音 | 音频文件 URL（公网可访问）。格式 wav/mp3，时长 2–30 秒，≤15MB；音频长于视频时长会被截断，不足则尾段无声 |
+| `parameters.resolution` | string | 否 | 1080P | 分辨率档位：`720P`、`1080P`，直接影响费用 |
+| `parameters.ratio` | string | 否 | 16:9 | 宽高比：`16:9`、`9:16`、`1:1`、`4:3`、`3:4` |
+| `parameters.duration` | integer | 否 | 5 | 视频时长（秒），范围 [2, 15] 整数，直接影响费用 |
+| `parameters.prompt_extend` | boolean | 否 | true | 提示词智能改写；对较短 prompt 提升明显，但会增加耗时 |
+| `parameters.watermark` | boolean | 否 | false | `true` 时视频右下角添加「AI生成」水印 |
+| `parameters.seed` | integer | 否 | 系统随机 | 随机种子，范围 [0, 2147483647]；相同 seed 也不保证结果完全一致 |
+
+> wan2.7 不支持 `size` 与 `shot_type` 字段（配置不生效）。单/多镜头直接在 prompt 中用自然语言描述，如「生成多镜头视频」或时间戳分镜「第1个镜头[0-3秒]……」；未指定时由模型根据语义自行决定。
+
+#### 请求体 — 旧版协议（wan2.6 / wan2.5 / wan2.2 / wanx2.1）
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `model` | string | 是 |  | 见上方模型对比表，如 `wan2.6-t2v` |
+| `input.prompt` | string | 是 |  | 文本提示词；wan2.6/wan2.5 系 ≤1500 字符，wan2.2/wanx2.1 系 ≤800 字符，超出自动截断 |
+| `input.negative_prompt` | string | 否 |  | 反向提示词，≤500 字符 |
+| `input.audio_url` | string | 否 | 不传则自动配音 | 仅 wan2.6/wan2.5 系支持。格式 wav/mp3，时长 3–30 秒，≤15MB |
+| `parameters.size` | string | 否 | 依模型（见下表） | 输出分辨率，必须是具体像素值如 `1280*720`，**不能**写 `1:1` 或 `480P`；可选值依模型，直接影响费用 |
+| `parameters.duration` | integer | 否 | 5 | 视频时长（秒）。wan2.6-t2v：[2, 15]；wan2.6-t2v-us / wan2.5-t2v-preview：5 或 10；**wan2.2/wanx2.1 系固定 5 秒，不可传** |
+| `parameters.shot_type` | string | 否 | single | 仅 wan2.6 支持。`single`（单镜头）/ `multi`（多镜头）；仅 `prompt_extend=true` 时生效，优先级高于 prompt 中的镜头描述 |
+| `parameters.prompt_extend` | boolean | 否 | true | 同新版协议 |
+| `parameters.watermark` | boolean | 否 | false | 同新版协议 |
+| `parameters.seed` | integer | 否 | 系统随机 | 同新版协议 |
+
+#### 分辨率档位与像素映射
+
+**新版协议（wan2.7）：`resolution` × `ratio` → 输出像素**
+
+| 档位 | 16:9 | 9:16 | 1:1 | 4:3 | 3:4 |
+|:---|:---|:---|:---|:---|:---|
+| 720P | 1280\*720 | 720\*1280 | 960\*960 | 1104\*832 | 832\*1104 |
+| 1080P | 1920\*1080 | 1080\*1920 | 1440\*1440 | 1648\*1248 | 1248\*1648 |
+
+**旧版协议：`size` 可选枚举**
+
+| 档位 | 可选 size（宽\*高：宽高比） |
+|:---|:---|
+| 480P | 832\*480（16:9）、480\*832（9:16）、624\*624（1:1） |
+| 720P | 1280\*720（16:9）、720\*1280（9:16）、960\*960（1:1）、1088\*832（4:3）、832\*1088（3:4） |
+| 1080P | 1920\*1080（16:9）、1080\*1920（9:16）、1440\*1440（1:1）、1632\*1248（4:3）、1248\*1632（3:4） |
+
+**各模型可用档位与默认值**
+
+| 模型 | 可用档位 | 默认值 |
+|:---|:---|:---|
+| `wan2.7-t2v(-2026-06-12)` | 720P、1080P（resolution） | 1080P / 16:9 |
+| `wan2.6-t2v`、`wan2.6-t2v-us` | 720P、1080P 档全部 size | 1920\*1080 |
+| `wan2.5-t2v-preview` | 480P、720P、1080P 档全部 size | 1920\*1080 |
+| `wan2.2-t2v-plus` | 480P、1080P 档全部 size | 1920\*1080 |
+| `wanx2.1-t2v-turbo` | 480P、720P 档全部 size | 1280\*720 |
+| `wanx2.1-t2v-plus` | 仅 720P 档全部 size | 1280\*720 |
+
+> 注意：旧版 720P/1080P 档的 4:3、3:4 像素值（1088\*832、1632\*1248 等）与新版 wan2.7（1104\*832、1648\*1248 等）不同，请勿混用。
+
+#### 请求示例（wan2.7-t2v，新版协议）
+
+```bash
+curl --request POST \
+  --url 'https://video.pinducloud.com.cn/ali/api/v1/services/aigc/video-generation/video-synthesis' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model": "wan2.7-t2v",
+    "input": {
+      "prompt": "夕阳下的海浪轻轻拍打礁石，远处帆船缓缓驶过"
+    },
+    "parameters": {
+      "resolution": "720P",
+      "ratio": "16:9",
+      "duration": 5
+    }
+  }'
+```
+
+#### 请求示例（wan2.6-t2v，旧版协议）
+
+```bash
+curl --request POST \
+  --url 'https://video.pinducloud.com.cn/ali/api/v1/services/aigc/video-generation/video-synthesis' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model": "wan2.6-t2v",
+    "input": {
+      "prompt": "春日里，樱花飘落在古典庭院中，微风轻拂"
+    },
+    "parameters": {
+      "size": "1280*720",
+      "duration": 5
+    }
+  }'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "output": {
+    "task_status": "PENDING",
+    "task_id": "0385dc79-5ff8-4d82-bcb6-xxxxxx"
+  },
+  "request_id": "4909100c-7b5a-9f92-bfe5-xxxxxx"
+}
+```
+
+#### 响应字段
+
+| 字段 | 类型 | 说明 |
+|:---|:---|:---|
+| `output.task_id` | string | 本站公开任务 ID，用于查询本站保留的任务记录 |
+| `output.task_status` | string | 任务状态，创建成功后为 `PENDING` |
+| `request_id` | string | 请求唯一标识，可用于问题溯源 |
+| `code` / `message` | string | 仅创建失败时返回错误码与详情 |
+
+---
+
+### 注意事项
+
+- **固定时长模型**：`wan2.2-t2v-plus`、`wanx2.1-t2v-turbo`、`wanx2.1-t2v-plus` 固定生成 5 秒视频，**请勿传入 `duration`**，传入会报错（`duration customization is not supported`）。
+- **prompt 超长自动截断**：各模型 prompt 上限见模型对比表（5000/1500/800 字符），超出部分自动截断，不报错；`negative_prompt` 上限 500 字符。
+- **多镜头**：wan2.7 已移除 `shot_type` 参数，直接在 prompt 中用自然语言或时间戳分镜描述镜头结构；wan2.6 需设置 `shot_type: "multi"` 且保持 `prompt_extend: true`。
+- **音频要求**：`audio_url` 仅 wan2.7/wan2.6/wan2.5 系支持；wav/mp3 格式，wan2.7 时长 2–30 秒、旧版 3–30 秒，大小 ≤15MB；不传时模型自动配音（wan2.2/wanx2.1 系仅生成无声视频）。
+- **计费**：本站提交时预扣额度，完成后按配置的模型价格及可用用量信息结算；视频任务失败后退还预扣额度，实际金额以使用日志为准。
+- **结果时效**：本站公开任务 ID 用于查询保留的任务记录；视频地址的有效期以实际返回链接为准，请及时下载或转存。
+
+---
+
+### 查询任务
+
+创建任务后，通过返回的 `output.task_id` 轮询任务状态与生成结果：
+
+```text
+GET https://video.pinducloud.com.cn/ali/api/v1/tasks/{task_id}
+```
+
+详见 [09-查询任务](/docs/video/wan/query)。

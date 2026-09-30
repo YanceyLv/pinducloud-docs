@@ -1,0 +1,146 @@
+---
+title: "查询任务"
+sidebar_label: "09-查询任务"
+---
+
+# 查询任务
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+通过 `task_id` 轮询任意万相异步任务（文生视频、图生视频、参考生视频、视频编辑、首尾帧、动作迁移、数字人、VACE）的状态及结果。
+
+---
+
+### 接口定义
+
+```text
+GET https://video.pinducloud.com.cn/ali/api/v1/tasks/{task_id}
+```
+
+#### 路径参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|:---|:---|:---:|:---|
+| `task_id` | string | 是 | 创建任务时返回的 `output.task_id`，用于查询本站保留的任务记录 |
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 说明 |
+|:---|:---|:---:|:---|
+| `Authorization` | string | 是 | `Bearer sk-your-pinducloud-token` |
+
+#### 请求示例
+
+```bash
+curl --request GET \
+  --url 'https://video.pinducloud.com.cn/ali/api/v1/tasks/{task_id}' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token'
+```
+
+---
+
+### 响应说明
+
+#### 处理中（PENDING / RUNNING）
+
+```jsonc
+{
+  "request_id": "e5d70b02-ebd3-98ce-9fe8-759d7d7b107d",
+  "output": {
+    "task_id": "0385dc79-5ff8-4d82-bcb6-xxxxxx",
+    "task_status": "RUNNING",
+    "submit_time": "2026-07-22 11:31:35.916",
+    "scheduled_time": "2026-07-22 11:31:35.973"
+  }
+}
+```
+
+#### 成功（SUCCEEDED）
+
+```jsonc
+{
+  "request_id": "caa62a12-0972-9762-96c7-8cd0cd10bc9f",
+  "output": {
+    "task_id": "eff1443c-b8b0-42b4-a973-xxxxxx",
+    "task_status": "SUCCEEDED",
+    "submit_time": "2026-07-22 11:31:35.916",
+    "scheduled_time": "2026-07-22 11:31:35.973",
+    "end_time": "2026-07-22 11:35:14.377",
+    "orig_prompt": "一只猫在草地上奔跑",
+    "video_url": "https://dashscope-result-sh.oss-accelerate.aliyuncs.com/xxx.mp4?Expires=xxx"
+  },
+  "usage": {
+    "duration": 5,
+    "input_video_duration": 0,
+    "output_video_duration": 5,
+    "video_count": 1,
+    "SR": 1080
+  }
+}
+```
+
+#### 失败（FAILED）
+
+```jsonc
+{
+  "request_id": "xxxx",
+  "output": {
+    "task_id": "xxxx",
+    "task_status": "FAILED",
+    "code": "InvalidParameter",
+    "message": "The size is not match xxxxxx"
+  }
+}
+```
+
+#### 任务不存在
+
+以下为业务错误结构示意。请同时检查 HTTP 状态码；鉴权或请求校验错误的包装可能不同。遇到该错误时，核对创建响应中的公开任务 ID 和所属用户，不要因此重复创建视频。
+
+```jsonc
+{
+  "code": "task_not_exist",
+  "message": "task_not_exist",
+  "data": null
+}
+```
+
+---
+
+### 响应字段
+
+#### output
+
+| 字段 | 类型 | 说明 |
+|:---|:---|:---|
+| `task_id` | string | 任务 ID |
+| `task_status` | string | 任务状态：`PENDING`、`RUNNING`、`SUCCEEDED`、`FAILED`、`CANCELED`、`UNKNOWN` |
+| `submit_time` / `scheduled_time` / `end_time` | string | 任务提交 / 开始执行 / 完成时间，格式 `YYYY-MM-DD HH:mm:ss.SSS` |
+| `video_url` | string | 生成的视频地址，仅 `SUCCEEDED` 时返回；MP4（H.264），**有效期以实际返回地址为准** |
+| `orig_prompt` | string | 原始输入提示词 |
+| `actual_prompt` | string | 开启 `prompt_extend` 时返回的改写后提示词（部分模型不返回） |
+| `code` / `message` | string | 仅 `FAILED` 时返回错误码与详情 |
+
+#### usage
+
+不同模型系列的用量字段略有差异，下表为可能返回的字段，并非每个型号都返回全部字段。`usage` 表示任务服务报告的用量，最终计费规则和金额以本站模型价格及使用日志为准。
+
+| 字段 | 类型 | 适用模型 | 说明 |
+|:---|:---|:---|:---|
+| `duration` | number | 按型号返回 | 原生用量时长（秒），含义以该型号为准；不能一律视为输入与输出时长之和 |
+| `input_video_duration` | number | Wan 3.0 及提供该统计的型号 | 输入视频时长（秒）；完整报告的纯生成任务通常为 0，缺失不等同于 0 |
+| `output_video_duration` | number | Wan 3.0 及提供该统计的型号 | 输出视频时长（秒），可能含小数 |
+| `SR` | integer | 同上 | 输出分辨率档位，如 `480`、`720`、`1080` |
+| `ratio` | string | wan2.7 | 输出宽高比，如 `16:9` |
+| `size` | string | wan2.6 | 输出分辨率「宽*高」，如 `1920*1080` |
+| `video_duration` | number | wan2.5 及更早、animate | 原生视频时长（秒），可能含小数 |
+| `video_ratio` | string | wan2.5 及更早为「宽*高」；animate 为 `standard` / `pro` | 输出规格标识 |
+| `video_count` | integer | 全部 | 生成视频数量，固定 1 |
+
+---
+
+### 使用建议
+
+- 生成耗时通常 1–5 分钟，建议以 **15 秒**左右的间隔轮询；请勿因等待而重复创建任务。
+- 任务记录的查询可用期以本站记录保留策略为准；生成结果链接有有效期，请及时下载或转存。
+- 实际请求限额由本站配置和账号权限决定，请控制轮询频率。

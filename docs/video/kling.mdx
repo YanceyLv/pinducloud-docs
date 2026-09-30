@@ -1,438 +1,168 @@
 ---
-sidebar_position: 3
-title: Kling 原版视频接口
+title: "可灵 AI 视频生成 · 概述"
+sidebar_label: "00-概述"
 ---
 
-# Kling 原版视频接口
-
-本文说明 Kling 原版 `/kling/v1/...` 路由。原版接口将模型名放在 JSON 请求体中，常用字段包括
-`model_name`、`prompt`、`duration`、`mode`、`aspect_ratio` 和 `sound`。模型及字段限制因能力接口而异。
-插件声明的模型包括 `kling-v1`、`kling-v1-5`、`kling-v1-6`、`kling-v2-master`、`kling-v2-1`、
-`kling-v2-1-master`、`kling-v2-5-turbo`、`kling-v2-6`、`kling-v3`、`kling-video-o1` 和 `kling-v3-omni`；
-每个模型可用的接口不同，实际开通情况以当前 API Key 的模型列表为准。
-
-## 服务地址与鉴权
-
-~~~bash
-export BASE_URL="https://video.pinducloud.com.cn"
-export API_KEY="sk-your-api-key"
-export TASK_ID="task-id-from-creation-response"
-~~~
-
-所有请求使用 `Authorization: Bearer $API_KEY`。JSON 请求还需设置 `Content-Type: application/json`。
-可用模型以当前 API Key 的 `GET /v1/models` 返回结果为准。
-
-## 视频与音频任务接口
-
-| 能力 | 创建路径 | 任务查询路径 | 任务列表路径 |
-| --- | --- | --- | --- |
-| 文生视频 | `POST /kling/v1/videos/text2video` | `/kling/v1/videos/text2video/{task_id}` | `/kling/v1/videos/text2video` |
-| 图生视频 | `POST /kling/v1/videos/image2video` | `/kling/v1/videos/image2video/{task_id}` | `/kling/v1/videos/image2video` |
-| Omni 多模态视频 | `POST /kling/v1/videos/omni-video` | `/kling/v1/videos/omni-video/{task_id}` | `/kling/v1/videos/omni-video` |
-| 多图参考生成 | `POST /kling/v1/videos/multi-image2video` | `/kling/v1/videos/multi-image2video/{task_id}` | `/kling/v1/videos/multi-image2video` |
-| 动作控制 | `POST /kling/v1/videos/motion-control` | `/kling/v1/videos/motion-control/{task_id}` | `/kling/v1/videos/motion-control` |
-| 多模态视频编辑 | `POST /kling/v1/videos/multi-elements` | `/kling/v1/videos/multi-elements/{task_id}` | `/kling/v1/videos/multi-elements` |
-| 视频延长 | `POST /kling/v1/videos/video-extend` | `/kling/v1/videos/video-extend/{task_id}` | `/kling/v1/videos/video-extend` |
-| 对口型 | `POST /kling/v1/videos/advanced-lip-sync` | `/kling/v1/videos/advanced-lip-sync/{task_id}` | `/kling/v1/videos/advanced-lip-sync` |
-| 数字人 | `POST /kling/v1/videos/avatar/image2video` | `/kling/v1/videos/avatar/image2video/{task_id}` | `/kling/v1/videos/avatar/image2video` |
-| 文生音效 | `POST /kling/v1/audio/text-to-audio` | 同创建路径加 `/{task_id}` | 同创建路径 |
-| 视频配音效 | `POST /kling/v1/audio/video-to-audio` | 同创建路径加 `/{task_id}` | 同创建路径 |
-| 语音合成 | `POST /kling/v1/audio/tts` | 同创建路径加 `/{task_id}` | 同创建路径 |
-| 音色克隆 | `POST /kling/v1/general/custom-voices` | 同创建路径加 `/{task_id}` | 同创建路径 |
-| 自定义主体 | `POST /kling/v1/general/advanced-custom-elements` | 同创建路径加 `/{task_id}` | 同创建路径 |
-| 视频特效 | `POST /kling/v1/videos/effects` | 同创建路径加 `/{task_id}` | 同创建路径 |
-
-任务接口返回任务 ID 后，可通过单任务查询路径轮询状态，也可在创建路径上查询任务列表。任务列表支持
-`pageNum`、`pageSize`、`filter.model` 和 `filter.task_ids`（最多 100 个 ID）；分页参数范围为 1–500。
-查询结果中的状态和字段按具体能力返回。
-
-## 其他原版接口
-
-| 功能 | 方法与路径 |
-| --- | --- |
-| 初始化多元素选择 | `POST /kling/v1/videos/multi-elements/init-selection` |
-| 添加多元素选择 | `POST /kling/v1/videos/multi-elements/add-selection` |
-| 删除多元素选择 | `POST /kling/v1/videos/multi-elements/delete-selection` |
-| 清空多元素选择 | `POST /kling/v1/videos/multi-elements/clear-selection` |
-| 预览多元素选择 | `POST /kling/v1/videos/multi-elements/preview-selection` |
-| 人脸识别 | `POST /kling/v1/videos/identify-face` |
-| 删除自定义音色 | `POST /kling/v1/general/delete-voices` |
-| 查询预置音色 | `GET /kling/v1/general/presets-voices` |
-| 图像识别 | `POST /kling/v1/videos/image-recognize` |
-| 删除自定义主体 | `POST /kling/v1/general/delete-elements` |
-| 查询预置主体 | `GET /kling/v1/general/advanced-presets-elements` |
-| 查询自定义主体任务列表 | `GET /kling/v1/general/advanced-custom-elements` |
-| 查询自定义主体任务 | `GET /kling/v1/general/advanced-custom-elements/{task_id}` |
-
-这些接口可能创建或删除上游素材，提交前请确认请求中的资源 ID 和操作范围。
-
-## 创建示例
-
-### 文生视频
-
-~~~bash
-curl --request POST "$BASE_URL/kling/v1/videos/text2video" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{
-    "model_name": "kling-v3",
-    "prompt": "A red cube makes one slow rotation on a white surface, fixed camera.",
-    "duration": "5",
-    "mode": "std",
-    "aspect_ratio": "16:9",
-    "sound": "off"
-  }'
-~~~
-
-### 图生视频
-
-~~~bash
-curl --request POST "$BASE_URL/kling/v1/videos/image2video" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{
-    "model_name": "kling-v3",
-    "image": "https://example.com/first-frame.jpg",
-    "prompt": "The camera slowly pushes in as the subject turns toward the light.",
-    "duration": "5",
-    "mode": "std",
-    "aspect_ratio": "9:16",
-    "sound": "off"
-  }'
-~~~
-
-### Omni 参考视频
-
-~~~bash
-curl --request POST "$BASE_URL/kling/v1/videos/omni-video" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{
-    "model_name": "kling-v3-omni",
-    "prompt": "Continue the reference scene with consistent movement and lighting.",
-    "video_url": "https://example.com/reference.mp4",
-    "duration": "5",
-    "mode": "std",
-    "aspect_ratio": "16:9",
-    "sound": "off"
-  }'
-~~~
-
-### 多图参考生成
-
-`image_list` 最多包含 4 张图像，每项使用 `image` 字段。图片支持 HTTP(S) URL 或 Base64，格式为 JPG、JPEG、PNG；
-单张不超过 10 MB，宽高至少 300 像素，宽高比须在 `1:2.5` 到 `2.5:1` 之间。
-
-~~~bash
-curl --request POST "$BASE_URL/kling/v1/videos/multi-image2video" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{
-    "model_name": "kling-v1-6",
-    "image_list": [
-      {"image": "https://example.com/subject.jpg"},
-      {"image": "https://example.com/clothing.jpg"}
-    ],
-    "prompt": "The subject wears the reference clothing and walks through the scene.",
-    "negative_prompt": "blurry, distorted",
-    "mode": "std",
-    "duration": "5",
-    "aspect_ratio": "16:9"
-  }'
-~~~
-
-### 动作控制
-
-~~~bash
-curl --request POST "$BASE_URL/kling/v1/videos/motion-control" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{
-    "model_name": "kling-v3",
-    "image_url": "https://example.com/character.jpg",
-    "video_url": "https://example.com/motion.mp4",
-    "prompt": "Keep the character expression natural.",
-    "character_orientation": "video",
-    "keep_original_sound": "no"
-  }'
-~~~
-
-### 视频延长
-
-视频延长使用已有生成视频的 `video_id`；单次通常延长 4–5 秒，连续延长后的总时长有上限。已过期或已清理的视频不能再延长。
-
-~~~bash
-curl --request POST "$BASE_URL/kling/v1/videos/video-extend" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{
-    "video_id": "source-video-id",
-    "prompt": "A small dog enters the scene.",
-    "negative_prompt": "",
-    "cfg_scale": 0.5
-  }'
-~~~
-
-`video_id` 指源视频 ID。支持范围与源任务模型和视频有效期有关。
-
-### 对口型
-
-对口型分两步：先调用 `identify-face` 提交 `video_id` 或 `video_url`，再使用返回的 `session_id` 和 `face_id` 调用
-`advanced-lip-sync`。每个任务目前只支持指定一个人脸；`audio_id` 和 `sound_file` 必须二选一。
-
-~~~bash
-curl --request POST "$BASE_URL/kling/v1/videos/identify-face" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{"video_url":"https://example.com/source.mp4"}'
-~~~
-
-识别响应中的 `session_id`、`face_id` 及人脸出现时间用于创建对口型任务：
-
-~~~bash
-curl --request POST "$BASE_URL/kling/v1/videos/advanced-lip-sync" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{
-    "session_id": "session-id-from-face-detection",
-    "face_choose": [
-      {
-        "face_id": "face-id-from-face-detection",
-        "sound_file": "https://example.com/speech.mp3",
-        "sound_start_time": 0,
-        "sound_end_time": 5000,
-        "sound_insert_time": 0,
-        "sound_volume": 1,
-        "original_audio_volume": 1
-      }
-    ]
-  }'
-~~~
-
-音频支持 MP3、WAV、M4A、AAC，URL 或 Base64；文件不超过 5 MB，音频长度为 2–60 秒。裁剪后的音频至少 2 秒，
-并须与所选人脸在视频中的时间段重叠至少 2 秒。`sound_start_time`、`sound_end_time` 和 `sound_insert_time` 的单位为毫秒。
-
-### 数字人
-
-数字人接口需要图片和音频；音频可通过 `audio_id` 或 `sound_file` 提供，不能同时为空或同时传入。
-
-~~~bash
-curl --request POST "$BASE_URL/kling/v1/videos/avatar/image2video" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{
-    "image": "https://example.com/portrait.jpg",
-    "sound_file": "https://example.com/speech.mp3",
-    "prompt": "The person speaks naturally and gestures with one hand.",
-    "mode": "std"
-  }'
-~~~
-
-图片支持 JPG、JPEG、PNG，不超过 10 MB，最短边至少 300 像素；音频支持 MP3、WAV、M4A、AAC，
-时长为 2–300 秒。`prompt` 可描述人物动作、情绪和镜头。
-
-### 文生音效和视频配音效
-
-文生音效使用 `prompt` 描述声音，提示词不超过 200 个字符；`duration` 为 3.0–10.0 秒，精确到 0.1 秒。
-
-~~~bash
-curl --request POST "$BASE_URL/kling/v1/audio/text-to-audio" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{"prompt":"Fireworks crackle in the distance.","duration":3.0}'
-~~~
-
-视频配音效需要在 `video_id` 与 `video_url` 中二选一；视频支持 MP4/MOV、3–20 秒且不超过 100 MB。
-可选的 `sound_effect_prompt` 和 `bgm_prompt` 分别描述音效和配乐，均不超过 200 个字符；`asmr_mode` 控制是否增强细节音效。
-
-~~~bash
-curl --request POST "$BASE_URL/kling/v1/audio/video-to-audio" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{
-    "video_url": "https://example.com/video.mp4",
-    "sound_effect_prompt": "Soft footsteps on grass.",
-    "bgm_prompt": "Calm acoustic music.",
-    "asmr_mode": false
-  }'
-~~~
-
-### 语音合成
-
-语音合成使用 `text`、`voice_id` 和 `voice_language`；`voice_speed` 可选，范围为 `0.8` 到 `2.0`。
-
-~~~bash
-curl --request POST "$BASE_URL/kling/v1/audio/tts" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{
-    "text": "The waves move gently along the shore.",
-    "voice_id": "oversea_male1",
-    "voice_language": "en",
-    "voice_speed": 1.0
-  }'
-~~~
-
-`/kling/v1/audio/text-to-audio` 根据文字生成音效；`/kling/v1/audio/video-to-audio` 根据视频生成配套音效。
-两者使用各自接口定义的请求字段和模型限制。
-
-### 创建和管理自定义音色
-
-创建请求至少提供 `voice_name`，并通过 `voice_url` 或 `video_id` 提供音频素材。素材须包含清晰的单人声音，
-时长为 5–30 秒；可使用 MP3、WAV、MP4 或 MOV。
-
-~~~bash
-curl --request POST "$BASE_URL/kling/v1/general/custom-voices" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{
-    "voice_name": "Sample voice",
-    "voice_url": "https://example.com/voice.mp3"
-  }'
-~~~
-
-可通过 `GET /kling/v1/general/custom-voices` 查询自定义音色，`GET /kling/v1/general/custom-voices/{id}` 查询单个任务，
-`GET /kling/v1/general/presets-voices` 查询预置音色。删除自定义音色使用
-`POST /kling/v1/general/delete-voices` 并传入 `voice_id`。
-
-## 图像识别
-
-图像识别返回主体分割、人像头部、人脸或服装分割结果。`image` 可以是可公开访问的图片 URL，或不带
-`data:image/...;base64,` 前缀的原始 Base64 字符串；支持 JPG、JPEG、PNG，文件不超过 10 MB，宽高至少
-300 像素，宽高比须在 `1:2.5` 到 `2.5:1` 之间。
-
-~~~bash
-curl --request POST "$BASE_URL/kling/v1/videos/image-recognize" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{
-    "image": "https://example.com/source.jpg"
-  }'
-~~~
-
-响应中的 `data.task_result.images` 是识别结果数组。每项含 `type`（如 `object_seg`、`head_seg`、
-`face_seg`、`cloth_seg`）、`is_contain` 和分割结果 `url`；结果地址可能过期，请及时保存。
-
-## 自定义主体
-
-创建接口支持通过多张图片或一段视频定义主体。`reference_type` 为 `image_refer` 时传 `element_image_list`；
-为 `video_refer` 时传 `element_video_list`。
-
-| 字段 | 必填 | 说明 |
-| --- | --- | --- |
-| `element_name` | 是 | 主体名称，最多 20 个字符 |
-| `element_description` | 是 | 主体描述，最多 100 个字符 |
-| `reference_type` | 是 | `image_refer` 或 `video_refer` |
-| `element_image_list.frontal_image` | 图片模式必填 | 正面参考图 URL 或 Base64 |
-| `element_image_list.refer_images` | 否 | 其他角度或特写图，数组项使用 `image_url` |
-| `element_video_list.refer_videos` | 视频模式必填 | 参考视频数组，数组项使用 `video_url` |
-| `element_voice_id` | 否 | 绑定已有音色 ID |
-| `tag_list` | 否 | 标签数组，数组项使用 `tag_id` |
-| `callback_url` | 否 | 任务状态回调地址 |
-| `external_task_id` | 否 | 调用方任务 ID；同一用户下需唯一 |
-
-图片参考主体至少传一张正面图，可再传 1–3 张其他图片；图片支持 JPG、JPEG、PNG，单张不超过 10 MB，
-宽高至少 300 像素，宽高比为 `1:2.5` 到 `2.5:1`。视频参考主体最多传一段 MP4 或 MOV，时长 3–8 秒，
-宽高比为 `16:9` 或 `9:16`，视频尺寸为 1080P，单个视频不超过 200 MB；视频参考仅适用于上游已开通该能力的型号。
-
-~~~bash
-curl --request POST "$BASE_URL/kling/v1/general/advanced-custom-elements" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{
-    "element_name": "Sample character",
-    "element_description": "A person wearing a red coat",
-    "reference_type": "image_refer",
-    "element_image_list": {
-      "frontal_image": "https://example.com/front.jpg",
-      "refer_images": [
-        {"image_url": "https://example.com/side.jpg"}
-      ]
-    },
-    "tag_list": [{"tag_id": "o_102"}]
-  }'
-~~~
-
-使用 `GET /kling/v1/general/advanced-custom-elements` 查询主体任务列表，使用同一路径加
-`/{task_id}` 查询单个任务；`GET /kling/v1/general/advanced-presets-elements` 查询预置主体。
-删除自定义主体时调用 `POST /kling/v1/general/delete-elements`，请求体传入 `element_id`。
-可用标签 ID 包括 `o_101`（热梗）、`o_102`（人物）、`o_103`（动物）、`o_104`（道具）、
-`o_105`（服饰）、`o_106`（场景）、`o_107`（特效）和 `o_108`（其他）。
-
-## 视频特效
-
-`effect_scene` 指定特效场景。单图场景使用 `input.image`；双图场景使用恰好两张图片的 `input.images`。
-图片可使用 URL 或不带 MIME 前缀的原始 Base64，支持 JPG、JPEG、PNG，单张不超过 10 MB，宽高至少
-300 像素，宽高比为 `1:2.5` 到 `2.5:1`。场景与所需输入类型由上游定义；所选场景必须与图片数量匹配。
-可选的 `callback_url` 用于接收任务状态通知，`external_task_id` 可用于按调用方任务 ID 查询。
-
-~~~bash
-curl --request POST "$BASE_URL/kling/v1/videos/effects" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{
-    "effect_scene": "color_mixing",
-    "input": {
-      "image": "https://example.com/source.jpg"
-    }
-  }'
-~~~
-
-特效任务通过 `GET /kling/v1/videos/effects/{task_id}` 查询，或通过 `GET /kling/v1/videos/effects`
-查询任务列表。列表支持 `pageNum` 和 `pageSize`；成功结果中的视频地址可能有时效。
-
-## 多元素操作
-
-多元素选择接口用于建立并修改一组素材选择，再提交 `/kling/v1/videos/multi-elements` 生成或编辑视频。
-初始化时在 `video_id` 与 `video_url` 中二选一；响应中的 `session_id` 随后用于选择操作，有效期为 24 小时。
-`add-selection` 和 `delete-selection` 使用 `frame_index` 与 `points`，坐标取值范围为 `0` 到 `1`，单帧最多 10 个点。
-`clear-selection` 与 `preview-selection` 只需 `session_id`。
-初始化视频支持 2–5 秒或 7–10 秒；URL 视频仅支持 MP4/MOV，宽高为 720–2160 像素，帧率为 24、30 或 60 fps。
-每个会话最多标记 10 帧，单帧最多 10 个坐标点。
-
-多元素任务使用 `session_id`、`edit_mode`、`prompt` 等字段；`edit_mode` 为 `addition`、`swap` 或 `removal`。
-增加元素需提供 1–2 张 `image_list`，替换需提供 1 张，删除无需图片。图片请先按目标主体裁剪。
-
-~~~bash
-curl --request POST "$BASE_URL/kling/v1/videos/multi-elements/init-selection" \
-  --header "Authorization: Bearer $API_KEY" \
-  --header "Content-Type: application/json" \
-  --data '{"video_url":"https://example.com/source.mp4"}'
-~~~
-
-自定义主体通过 `/kling/v1/general/advanced-custom-elements` 创建；预置主体列表使用
-`GET /kling/v1/general/advanced-presets-elements`，删除自定义主体使用
-`POST /kling/v1/general/delete-elements`。人脸识别和图像识别分别使用
-`POST /kling/v1/videos/identify-face` 与 `POST /kling/v1/videos/image-recognize`。
-
-删除音色或主体会移除对应的上游资源；删除前请确认资源 ID。
-
-## 查询任务
-
-例如查询文生任务：
-
-~~~bash
-curl "$BASE_URL/kling/v1/videos/text2video/$TASK_ID" \
-  --header "Authorization: Bearer $API_KEY"
-~~~
-
-列表查询：
-
-~~~bash
-curl --get "$BASE_URL/kling/v1/videos/text2video" \
-  --header "Authorization: Bearer $API_KEY" \
-  --data-urlencode "filter.task_ids=$TASK_ID" \
-  --data-urlencode "pageNum=1" \
-  --data-urlencode "pageSize=20"
-~~~
-
-图生、Omni、动作控制及其他任务型接口分别使用各自的查询和列表路径。任务状态常见为 `submitted`、`processing`、
-`succeed` 或 `failed`；成功后可从任务结果读取视频地址。
-
-## 下载视频
-
-~~~bash
-curl --fail --location "$BASE_URL/v1/videos/$TASK_ID/content" \
-  --header "Authorization: Bearer $API_KEY" \
-  --output generated.mp4
-~~~
+# 可灵 AI 视频生成 · 概述
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+---
+
+## 能力简介
+
+可灵 AI 视频生成支持以下任务类型：
+
+| 任务类型 | 接口路径 | 说明 |
+|:---|:---|:---|
+| 文生视频 | `POST /kling/v1/videos/text2video` | 根据文本提示词生成视频 |
+| 图生视频 | `POST /kling/v1/videos/image2video` | 以图片驱动生成视频 |
+| 视频 Omni | `POST /kling/v1/videos/omni-video` | Omni 多模态视频生成，支持主体、图片、视频等多种输入 |
+| 多图参考生视频 | `POST /kling/v1/videos/multi-image2video` | 多张参考图片生成视频 |
+| 动作控制 | `POST /kling/v1/videos/motion-control` | 基于动作模板控制视频生成 |
+| 多模态视频编辑 | `POST /kling/v1/videos/multi-elements` | 对视频中的元素进行替换、删除等编辑 |
+| 视频延长 | `POST /kling/v1/videos/video-extend` | 延长已有视频时长 |
+| 对口型 | `POST /kling/v1/videos/advanced-lip-sync` | 音频驱动口型同步视频生成 |
+| 数字人 | `POST /kling/v1/videos/avatar/image2video` | 图片+音频生成数字人视频 |
+| 文生音效 | `POST /kling/v1/audio/text-to-audio` | 根据文本描述生成音效 |
+| 视频配音效 | `POST /kling/v1/audio/video-to-audio` | 为视频自动生成配套音效 |
+| 语音合成 (TTS) | `POST /kling/v1/audio/tts` | 文本转语音 |
+| 音色克隆 | `POST /kling/v1/general/custom-voices` | 自定义音色管理 |
+| 图像识别 | `POST /kling/v1/videos/image-recognize` | 图片内容识别 |
+| 主体管理 | `POST /kling/v1/general/advanced-custom-elements` | 自定义主体管理 |
+| 视频特效 | `POST /kling/v1/videos/effects` | 基于模板生成视频特效 |
+
+视频生成为**异步任务**：提交后立即返回 `task_id`，需通过查询任务接口轮询任务状态；任务成功后响应中包含视频下载地址，请及时下载或转存。
+
+## 标准调用流程
+
+```text
+创建任务 (POST /kling/v1/videos/{endpoint})
+        │  返回 task_id + task_status: "submitted"
+        ▼
+查询状态 (GET /kling/v1/videos/{endpoint}/{task_id})   ← 轮询直至 succeed 或 failed
+        │  返回 task_result.videos[].url
+        ▼
+下载视频文件
+```
+
+## 接口地址
+
+> **路径规则**：在平台域名后追加渠道前缀 `/kling`，再拼接可灵官方原始路径即可。
+> 例如官方 `https://api-beijing.klingai.com/v1/videos/text2video` → 平台 `https://video.pinducloud.com.cn/kling/v1/videos/text2video`。
+
+## 鉴权
+
+所有请求均通过 HTTP `Authorization` 头携带 Bearer Token 进行鉴权：
+
+```text
+Authorization: Bearer sk-your-pinducloud-token
+```
+
+`sk-your-pinducloud-token` 为您在平台控制台创建的接口密钥。
+
+## 请求头
+
+| 头部 | 必填 | 说明 |
+|:---|:---:|:---|
+| `Authorization` | 是 | `Bearer sk-your-pinducloud-token` |
+| `Content-Type` | 条件必填 | POST 请求使用 `application/json`；GET 查询可省略 |
+
+## 模型概览
+
+可灵 AI 支持以下模型版本：
+
+| 模型 | 说明 |
+|:---|:---|
+| `kling-v3` | 3.0 视频生成型号，支持范围见对应接口 |
+| `kling-v3-omni` | 3.0 Omni 多模态视频型号 |
+| `kling-video-o1` | O1 Omni 多模态视频型号 |
+| `kling-v2-6` | 2.6 视频型号，模式取值见对应接口 |
+| `kling-v2-5-turbo` | Turbo 视频型号 |
+| `kling-v2-1-master` | 2.1 Master 视频型号 |
+| `kling-v2-master` | v2 系列早期版本 |
+| `kling-v1-6` | v1.6 版本 |
+| `kling-v1` | v1 基础版本 |
+
+> 不同接口支持的模型列表可能有所差异，请以各接口文档中的说明为准。
+
+## 任务状态值
+
+| 状态 | 含义 |
+|:---|:---|
+| `submitted` | 已提交 |
+| `processing` | 处理中 |
+| `succeed` | 生成成功 |
+| `failed` | 生成失败 |
+
+## 响应格式
+
+创建任务、单任务查询和同步管理接口的成功响应通常使用以下原生包装。字段是否返回取决于对应接口和任务阶段；错误响应不保证包含全部字段。
+
+```jsonc
+{
+  "code": 0,
+  "message": "string",
+  "request_id": "string",
+  "data": {} // 业务数据，字段详见对应接口
+}
+```
+
+| 字段 | 类型 | 说明 |
+|:---|:---|:---|
+| `code` | Int | 错误码，0 表示成功 |
+| `message` | String | 响应信息，成功时可能为空 |
+| `request_id` | String | 请求 ID，用于跟踪、排查问题；部分响应为空或不返回 |
+| `data` | Object / Array | 业务数据，形状随接口而异 |
+
+异步任务的列表查询使用本站的分页结构，不能按上面的 `data` 包装解析：
+
+| 字段 | 类型 | 说明 |
+|:---|:---|:---|
+| `items` | Array | 当前用户的任务列表 |
+| `total` | Integer | 符合筛选条件的任务总数 |
+| `page_num` / `page_size` | Integer | 当前页码和每页条数 |
+| `items[].task_id` | String | 本站公开任务 ID |
+| `items[].action` | String | 任务类型 |
+| `items[].status` | String | 本站状态，如 `QUEUED`、`IN_PROGRESS`、`SUCCESS`、`FAILURE` |
+| `items[].progress` / `items[].fail_reason` | String | 进度和失败原因 |
+| `items[].created_at` | Integer | Unix 秒时间戳 |
+| `items[].data` | Object | 任务服务返回的原生数据；尚未获取时可能不返回 |
+
+官方预置音色和预置主体的列表为同步查询，仍返回其各自的原生响应。请按对应页面的示例区分。
+
+## 回调通知
+
+创建任务接口接受 `callback_url` 参数，并将其发送给任务服务。回调是否可用及通知格式以任务服务实际行为为准，最终状态请通过本站查询接口确认。
+
+回调中可能包含任务服务自身的任务标识。查询本站任务时应使用创建响应中的公开 `task_id`；`external_task_id` 用于业务关联，原版查询接口不支持通过它查找本站任务。
+
+## PinduCloud 调用说明
+
+- 服务地址为 `https://video.pinducloud.com.cn`，鉴权使用本站创建的 API Key。
+- 视频任务提交成功表示任务已受理；请保存响应返回的任务 ID，并使用同一用户的 API Key 查询最终状态。
+- 本站查询仅返回当前用户可访问的任务；任务数据中的可选字段取决于任务服务返回的结果。
+- 原生响应中的 `credits`、`final_unit_deduction` 等积分字段不代表本站最终扣费，实际费用以站内使用日志为准。
+
+- `model_name` 用于选择账号可用的可灵模型，未提供时可使用 `model`；两者均省略时默认 `kling-v1`。音频、音色、图像识别和主体等接口也需确保账号存在对应路由模型。
+
+视频生成、音色克隆和主体创建按任务方式处理；视频选区操作、人脸识别、图像识别、语音合成和素材删除等接口通常直接返回结果。同步响应未提供任务 ID 时，无需轮询，也不要自行构造任务查询地址。
+
+## 相关文档
+
+- [文生视频](/docs/video/kling/text-to-video)
+- [图生视频](/docs/video/kling/image-to-video)
+- [视频Omni](/docs/video/kling/omni-video)
+- [多图参考生视频](/docs/video/kling/multi-image-to-video)
+- [动作控制](/docs/video/kling/motion-control)
+- [多模态视频编辑](/docs/video/kling/multi-elements)
+- [视频延长](/docs/video/kling/extend)
+- [对口型](/docs/video/kling/lip-sync)
+- [数字人](/docs/video/kling/avatar)
+- [文生音效](/docs/video/kling/text-to-audio)
+- [视频配音效](/docs/video/kling/video-to-audio)
+- [语音合成](/docs/video/kling/tts)
+- [音色克隆](/docs/video/kling/voices)
+- [图像识别](/docs/video/kling/image-recognize)
+- [主体管理](/docs/video/kling/elements)
+- [视频特效](/docs/video/kling/effects)

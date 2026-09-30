@@ -1,0 +1,151 @@
+---
+title: "查询任务"
+sidebar_label: "08-查询任务"
+---
+
+# 查询任务
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+查询视频生成任务列表及任务详情，获取生成结果。
+
+```text
+GET https://video.pinducloud.com.cn/vidu/ent/v2/tasks
+```
+
+---
+
+## 请求参数
+
+### 请求头
+
+| 头部 | 必填 | 说明 |
+|:---|:---:|:---|
+| `Content-Type` | 否 | `application/json` |
+| `Authorization` | 是 | `Bearer sk-your-pinducloud-token` |
+
+### 查询参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|:---|:---|:---:|:---|
+| `task_ids` | String | 可选 | 创建响应返回的公开任务 ID，多个值用逗号分隔，最多 100 个。指定 ID 后仍按分页参数返回。 |
+| `states` | String | 可选 | 查询任务的状态，多个值用逗号分隔。默认为全部；可选 `created`、`queueing`、`processing`、`success`、`failed`。`created` 与 `queueing` 均筛选排队阶段。 |
+| `model_versions` | String | 可选 | 按模型系列筛选，多个值用逗号分隔；可用 `q1`、`q2`、`q3`、`2.0`。 |
+| `model` | String | 可选 | 按本站模型名称筛选；与 `model_versions` 同时传入时，型号必须属于该系列。 |
+| `templates` | String | 可选 | 场景模板筛选，多个值用逗号分隔，最多 100 个。 |
+| `resolutions` | String | 可选 | 分辨率筛选，多个值用逗号分隔，最多 100 个。 |
+| `created_at.from` | String | 可选 | 开始时间，包含该时刻；接受 Unix 秒或带时区的日期时间，如 `2026-09-30T00:00:00%2B08:00`。不传时不限制。 |
+| `created_at.to` | String | 可选 | 结束时间，不包含该时刻；格式同开始时间，两者同时传入时必须晚于开始时间。 |
+| `pager.page` | Int | 可选 | 页码，从 1 开始；默认 1，本站最大 500。 |
+| `pager.pagesz` | Int | 可选 | 每页条数。默认 20，范围 1–100。 |
+| `pager.page_token` | String | 可选 | 上次返回的 `next_page_token`；传入时优先于 `pager.page`，对应页码仍不得超过 500。 |
+
+---
+
+## 请求示例
+
+### 查询指定任务
+
+```bash
+curl -X GET \
+  -H "Authorization: Bearer sk-your-pinducloud-token" \
+  "https://video.pinducloud.com.cn/vidu/ent/v2/tasks?task_ids={task_id}"
+```
+
+### 查询成功的任务列表
+
+```bash
+curl -X GET \
+  -H "Authorization: Bearer sk-your-pinducloud-token" \
+  "https://video.pinducloud.com.cn/vidu/ent/v2/tasks?states=success&pager.pagesz=20"
+```
+
+### 按时间范围查询
+
+```bash
+curl --get \
+  --url 'https://video.pinducloud.com.cn/vidu/ent/v2/tasks' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --data-urlencode 'created_at.from=2026-09-30T00:00:00+08:00' \
+  --data-urlencode 'created_at.to=2026-10-01T00:00:00+08:00' \
+  --data-urlencode 'pager.pagesz=20'
+```
+
+该示例查询北京时间 2026 年 9 月 30 日的任务，请按实际日期调整。`--data-urlencode` 会正确编码时区中的 `+`，避免它在查询字符串中被解释为空格。继续翻页时需保留相同筛选条件，并传入 `pager.page_token`。
+
+---
+
+## 响应参数
+
+| 字段 | 子字段 | 类型 | 说明 |
+|:---|:---|:---|:---|
+| `next_page_token` | | String | 非空表示仍有记录，空字符串表示没有下一页；本站最多查询至第 500 页，若返回值超过 500，请缩小时间范围后重新查询 |
+| `tasks` | | Array | 任务列表 |
+| | `id` | String | 任务 ID |
+| | `key_id` | String | 任务服务返回的密钥标识，可能不返回；不是本站 API Key ID |
+| | `type` | String | 任务类型 |
+| | `template` | String | 场景模板枚举值（仅 template 类型任务返回） |
+| | `model` | String | 使用的模型 |
+| | `prompt` | String | 提示词 |
+| | `images` | Array | 使用的图片 |
+| | `duration` | Int | 生成时长 |
+| | `resolution` | String | 分辨率 |
+| | `aspect_ratio` | String | 宽高比 |
+| | `state` | String | 处理状态：`created`、`queueing`、`processing`、`success`、`failed` |
+| | `creations` | Array | 生成物信息（任务成功时返回） |
+| | `creations.id` | String | 生成物 ID |
+| | `creations.url` | String | 生成物 URL（不带水印），有效期以实际返回地址为准 |
+| | `creations.watermarked_url` | String | 生成物 URL（带水印），有效期以实际返回地址为准 |
+| | `creations.cover_url` | String | 生成物封面，有效期以实际返回地址为准 |
+| | `creations.video` | Object | 视频信息 |
+| | `creations.video.duration` | Float | 视频时长 |
+| | `creations.video.fps` | Int | 视频帧率 |
+| | `creations.video.resolution.width` | Int | 视频宽度（px） |
+| | `creations.video.resolution.height` | Int | 视频高度（px） |
+| | `created_at` | String / Integer | 原生创建时间字符串；原生记录缺少此字段时，本站使用 Unix 秒时间戳 |
+| | `credits` | Int | 任务服务原生积分信息；本站实际扣费以使用日志为准 |
+
+> **注意**：视频 URL 的有效期以实际返回地址为准，请及时下载或转存。
+
+查询仅返回当前用户在本站创建且匹配筛选条件的任务，不返回模型服务账号中的全部任务。不存在或无权访问的 ID 不会返回；无匹配项时 `tasks` 为空数组。除本站补充的公开 ID 和状态外，原生可选字段仅在任务服务提供时返回，不应假定每个字段始终存在。
+
+---
+
+## 响应示例
+
+```jsonc
+{
+  "next_page_token": "",
+  "tasks": [
+    {
+      "id": "{task_id}",
+      "key_id": "{key_id}",
+      "type": "text2video",
+      "model": "viduq3-pro",
+      "prompt": "An astronaut walks through the fog.",
+      "duration": 5,
+      "resolution": "720p",
+      "aspect_ratio": "16:9",
+      "state": "success",
+      "creations": [
+        {
+          "id": "{creation_id}",
+          "url": "https://example.com/video.mp4",
+          "cover_url": "https://example.com/cover.jpg",
+          "watermarked_url": "https://example.com/video_wm.mp4",
+          "video": {
+            "duration": 5.0,
+            "fps": 24,
+            "resolution": {
+              "width": 1280,
+              "height": 720
+            }
+          }
+        }
+      ],
+      "created_at": "2025-01-01T15:41:31.968916Z",
+      "credits": 8
+    }
+  ]
+}
+```

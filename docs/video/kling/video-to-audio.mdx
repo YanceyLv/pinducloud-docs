@@ -1,0 +1,243 @@
+---
+title: "视频生音效"
+sidebar_label: "11-视频配音效"
+---
+
+# 视频生音效
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+POST 创建或管理请求可通过 `model_name` 选择账号已开通的可灵型号；未传时读取 `model`，两者都省略时使用 `kling-v1`。即使接口参数表未列出模型字段，也需确保账号已开通所选型号及对应能力。
+
+### 创建任务
+
+```text
+POST https://video.pinducloud.com.cn/kling/v1/audio/video-to-audio
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 是 | application/json | 数据交换格式 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求体
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `video_id` | string | 否 |  | 通过可灵 AI 生成的视频的 ID<br />- 与 video_url 参数二选一填写，不能同时为空，也不能同时有值<br />- 仅支持 30 天内生成并且长度在 3.0 秒-20.0 秒的视频 |
+| `video_url` | string | 否 |  | 所上传视频的获取链接<br />- 与 video_id 参数二选一填写，不能同时为空，也不能同时有值<br />- 视频格式仅支持 MP4/MOV，文件大小≤100M，视频长度在 3.0 秒-20.0 秒 |
+| `sound_effect_prompt` | string | 否 |  | 音效生成提示词<br />- 不能超过 200 个字符 |
+| `bgm_prompt` | string | 否 |  | 配乐生成提示词<br />- 不能超过 200 个字符 |
+| `asmr_mode` | boolean | 否 | false | 是否开启 ASMR 模式；该模式会增强细节音效，适合高沉浸内容场景<br />- true 表示开启，false 表示关闭（默认值） |
+| `external_task_id` | string | 否 |  | 自定义任务 ID<br />- 用户自定义任务 ID，传入不会覆盖系统生成的任务 ID，本站任务查询仍使用创建响应返回的公开任务 ID<br />- 请注意，单用户下需要保证唯一性 |
+| `callback_url` | string | 否 |  | 本次任务结果回调地址，发送给任务服务；是否投递及消息格式以实际服务行为为准<br />- 查询接口用于确认最终任务状态，请保留创建响应中的任务 ID |
+
+#### 请求示例
+
+```bash
+curl --request POST \
+  --url https://video.pinducloud.com.cn/kling/v1/audio/video-to-audio \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "video_url": "https://p1-kling.klingai.com/kcdn/cdn-kcdn112452/kling-qa-test/20fps-7s.mov",
+    "external_task_id": "",
+    "callback_url": ""
+  }'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, // 错误码；错误详情见 message 字段
+  "message": "string", // 错误信息
+  "request_id": "string", // 请求ID，系统生成，用于跟踪请求、排查问题
+  "data": {
+    "task_id": "string", // 任务ID，系统生成
+    "task_info": { // 任务创建时的参数信息
+      "external_task_id": "string" // 客户自定义任务ID
+    },
+    "task_status": "string", // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+    "created_at": 1722769557708, // 任务创建时间，Unix时间戳、单位ms
+    "updated_at": 1722769557708 // 任务更新时间，Unix时间戳、单位ms
+  }
+}
+```
+
+---
+
+### 查询任务（单个）
+
+```text
+GET https://video.pinducloud.com.cn/kling/v1/audio/video-to-audio/{id}
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 否 | application/json | GET 查询不携带 JSON 请求体，可省略此头 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求示例
+
+```bash
+curl --request GET \
+  --url https://video.pinducloud.com.cn/kling/v1/audio/video-to-audio/{task_id} \
+  --header 'Authorization: Bearer sk-your-pinducloud-token'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, // 错误码；错误详情见 message 字段
+  "message": "string", // 错误信息
+  "request_id": "string", // 请求ID，系统生成，用于跟踪请求、排查问题
+  "data": {
+    "task_id": "string", // 任务ID，系统生成
+    "task_status": "string", // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+    "task_status_msg": "string", // 任务状态信息，当任务失败时展示失败原因（如触发平台的内容风控等）
+    "task_info": { // 任务创建时的参数信息
+      "external_task_id": "string", // 客户自定义任务ID
+      "parent_video": { // 原始视频信息
+        "id": "string", // 原始视频ID
+        "url": "string", // 原始视频URL
+        "duration": "string" // 原始视频时长，单位s（秒）
+      }
+    },
+    "task_result": {
+      "videos": [
+        {
+          "id": "string", // 生成的视频ID；全局唯一
+          "url": "string", // 生成视频的URL（请注意，为下载地址可能有有效期，请及时转存）
+          "duration": "string" // 视频总时长，单位s（秒）
+        }
+      ],
+      "audios": [
+        {
+          "id": "string", // 生成的音频ID；全局唯一；请及时保存生成结果
+          "url_mp3": "string", // 生成音频的MP3格式URL（请注意，音频下载地址可能有有效期，请及时转存）
+          "url_wav": "string", // 生成音频的WAV格式URL（请注意，音频下载地址可能有有效期，请及时转存）
+          "duration_mp3": "string", // MP3格式音频总时长，单位s（秒）
+          "duration_wav": "string" // WAV格式音频总时长，单位s（秒）
+        }
+      ]
+    },
+    "final_unit_deduction": "string", // 任务服务原生积分信息；本站实际扣费以使用日志为准
+    "created_at": 1722769557708, // 任务创建时间，Unix时间戳、单位ms
+    "updated_at": 1722769557708 // 任务更新时间，Unix时间戳、单位ms
+  }
+}
+```
+
+---
+
+### 查询任务（列表）
+
+列表仅返回当前用户在该接口创建的任务。响应使用本站的 `items` 分页结构；每项 `data` 保留原生任务字段，`task_id` 为本站公开任务 ID。外层 `created_at` 使用 Unix 秒，原生 `data` 内的时间单位见字段注释。
+
+#### 查询参数
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `pageNum` | integer | 否 | 1 | 页码，范围 1–500 |
+| `pageSize` | integer | 否 | 20 | 每页数量，范围 1–500 |
+| `filter.model` | string | 否 |  | 按原版模型名称筛选 |
+| `filter.task_ids` | string | 否 |  | 按公开任务 ID 筛选；重复传入参数指定多个 ID，最多 100 个 |
+
+
+```text
+GET https://video.pinducloud.com.cn/kling/v1/audio/video-to-audio
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 否 | application/json | GET 查询不携带 JSON 请求体，可省略此头 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求示例
+
+```bash
+curl --request GET \
+  --url 'https://video.pinducloud.com.cn/kling/v1/audio/video-to-audio?pageNum=1&pageSize=30' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "items": [{
+    "task_id": "task-example",
+    "platform": "kling",
+    "action": "video_to_audio",
+    "status": "SUCCESS",
+    "progress": "100%",
+    "fail_reason": "",
+    "created_at": 1722769557,
+    "data": {
+      "code": 0,
+      // 错误码；错误详情见 message 字段
+      "message": "string",
+      // 错误信息
+      "request_id": "string",
+      // 请求ID，系统生成，用于跟踪请求、排查问题
+      "data": {
+        "task_id": "task-example",
+        // 任务ID，系统生成
+        "task_status": "succeed",
+        // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+        "task_status_msg": "string",
+        // 任务状态信息，当任务失败时展示失败原因（如触发平台的内容风控等）
+        "task_info": {
+          // 任务创建时的参数信息
+          "external_task_id": "string",
+          // 客户自定义任务ID
+          "parent_video": {
+            // 原始视频信息
+            "id": "string",
+            // 原始视频ID
+            "url": "string",
+            // 原始视频URL
+            "duration": "string" // 原始视频时长，单位s（秒）
+          }
+        },
+        "task_result": {
+          "videos": [{
+            "id": "string",
+            // 生成的视频ID；全局唯一
+            "url": "string",
+            // 生成视频的URL（请注意，为下载地址可能有有效期，请及时转存）
+            "duration": "string" // 视频总时长，单位s（秒）
+          }],
+          "audios": [{
+            "id": "string",
+            // 生成的音频ID；全局唯一；请及时保存生成结果
+            "url_mp3": "string",
+            // 生成音频的MP3格式URL（请注意，音频下载地址可能有有效期，请及时转存）
+            "url_wav": "string",
+            // 生成音频的WAV格式URL（请注意，音频下载地址可能有有效期，请及时转存）
+            "duration_mp3": "string",
+            // MP3格式音频总时长，单位s（秒）
+            "duration_wav": "string" // WAV格式音频总时长，单位s（秒）
+          }]
+        },
+        "final_unit_deduction": "string",
+        // 任务服务原生积分信息；本站实际扣费以使用日志为准
+        "created_at": 1722769557708,
+        // 任务创建时间，Unix时间戳、单位ms
+        "updated_at": 1722769557708 // 任务更新时间，Unix时间戳、单位ms
+      }
+    }
+  }],
+  "total": 1,
+  "page_num": 1,
+  "page_size": 30
+}
+```

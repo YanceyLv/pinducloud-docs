@@ -1,0 +1,99 @@
+---
+title: "场景特效模板"
+sidebar_label: "06-场景特效模板"
+---
+
+# 场景特效模板
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+基于预设场景模板生成特效视频。不同模板对应不同的调用参数。
+
+```text
+POST https://video.pinducloud.com.cn/vidu/ent/v2/template
+```
+
+---
+
+## 请求参数
+
+### 请求头
+
+| 头部 | 必填 | 说明 |
+|:---|:---:|:---|
+| `Content-Type` | 是 | `application/json` |
+| `Authorization` | 是 | `Bearer sk-your-pinducloud-token` |
+
+### 请求体
+
+| 参数 | 类型 | 必填 | 说明 |
+|:---|:---|:---:|:---|
+| `model` | String | 可选 | 用于选择账号已开通的 Vidu 型号；省略时默认 `viduq2`。模板效果由 `template` 或 `story` 决定。 |
+| `template` | String | 是 | 场景模板参数。不同模板对应不同的调用参数和效果，具体可通过 Vidu 官方场景示例中心查看。 |
+| `images` | Array[String] | 是 | 图像。模型以此图片来生成视频。<br />支持图片 Base64 编码或 URL，支持 png、jpeg、jpg、webp 格式。<br />图片宽高比需在 1:4 至 4:1 之间，大小不超过 50 MB。<br />POST body 不超过 20MB。 |
+| `prompt` | String | 可选 | 文本提示词。字符长度不超过 2000 个字符。<br />注：当 template 为 `subject_3`、`pubg_winner_hit` 时，提示词非必传 |
+| `seed` | Int | 可选 | 随机种子。不传或传 0 时使用随机数。 |
+| `aspect_ratio` | String | 可选 | 宽高比。默认 `16:9`，可选值：`16:9`、`9:16`。<br />不同 template 支持的可选值不同，详见模板说明。 |
+| `area` | String | 可选 | 异域公主特效专属参数。仅当 template 为 `exotic_princess` 时可用。<br />默认 `auto`，可选值：`denmark`、`uk`、`africa`、`china`、`mexico`、`switzerland`、`russia`、`italy`、`korea`、`thailand`、`india`、`japan` |
+| `beast` | String | 可选 | 与兽同行特效专属参数。仅当 template 为 `beast_companion` 时可用。<br />默认 `auto`，可选值：`bear`、`tiger`、`elk`、`snake`、`lion`、`wolf` |
+| `bgm` | Bool | 可选 | 是否添加背景音乐。默认 `false`。 |
+| `watermark` | Bool | 可选 | 是否添加水印。默认不加。 |
+| `wm_position` | Int | 可选 | 水印位置。`1`：左上，`2`：右上，`3`：右下（默认），`4`：左下 |
+| `wm_url` | String | 可选 | 自定义水印图片 URL。 |
+| `payload` | String | 可选 | 透传参数。最多 1048576 个字符。 |
+| `meta_data` | String | 可选 | 元数据标识，JSON 格式字符串，透传字段。 |
+| `callback_url` | String | 可选 | 回调地址。 |
+
+---
+
+## 请求示例
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer sk-your-pinducloud-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "template": "hugging",
+    "images": ["https://example.com/photo.jpeg"],
+    "prompt": "画面中的两个主体转向彼此，并开始拥抱",
+    "seed": 0
+  }' \
+  https://video.pinducloud.com.cn/vidu/ent/v2/template
+```
+
+---
+
+## 响应参数
+
+| 字段 | 类型 | 说明 |
+|:---|:---|:---|
+| `task_id` | String | 任务 ID |
+| `state` | String | 处理状态：`created`、`queueing`、`processing`、`success`、`failed` |
+| `template` | String | 本次调用的场景模板参数 |
+| `prompt` | String | 提示词 |
+| `images` | Array[String] | 图像参数 |
+| `seed` | Int | 随机种子 |
+| `aspect_ratio` | String | 宽高比 |
+| `bgm` | Bool | 是否添加背景音乐 |
+| `payload` | String | 透传参数 |
+| `watermark` | Bool | 是否使用水印 |
+| `credits` | Int | 任务服务原生积分信息；本站实际扣费以使用日志为准 |
+| `created_at` | String | 任务创建时间 |
+
+---
+
+## 响应示例
+
+```jsonc
+{
+  "task_id": "{task_id}",
+  "state": "created",
+  "template": "hugging",
+  "images": ["https://example.com/photo.jpeg"],
+  "prompt": "画面中的两个主体转向彼此，并开始拥抱",
+  "seed": 123456,
+  "payload": "",
+  "credits": 8,
+  "created_at": "2025-01-01T15:41:31.968916Z"
+}
+```

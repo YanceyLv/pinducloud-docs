@@ -1,0 +1,127 @@
+---
+title: "文生视频"
+sidebar_label: "01-文生视频"
+---
+
+# 文生视频
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+### 创建任务
+
+```text
+POST https://video.pinducloud.com.cn/kling/text-to-video/{model}
+```
+
+`{model}` 为路径参数，指定使用的模型版本：
+
+| 模型 | 说明 |
+|:---|:---|
+| `kling-3.0` | 旗舰模型，支持多镜头、原生音频、最高 4K |
+| `kling-3.0-turbo` | 3.0 加速版 |
+| `kling-2.6` | 支持原生音频 |
+| `kling-2.5-turbo` | 快速生成，性价比高 |
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 是 | application/json | 数据交换格式 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求体
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `prompt` | string | 是 |  | 文本提示词，可包含正向描述和负向描述<br />- `kling-3.0` / `kling-3.0-turbo`：不能超过 3072 个字符，建议不超过 2500 个字符<br />- `kling-2.6` / `kling-2.5-turbo`：不能超过 2500 个字符<br />- `kling-3.0` / `kling-3.0-turbo` 支持通过固定格式生成多镜头视频：`镜头 n, m, words; 镜头 n, m, words;`（半角符号分隔）<br />&nbsp;&nbsp;a. n：分镜序号，最多 6 个分镜，最少 1 个分镜<br />&nbsp;&nbsp;b. m：分镜时长，每个分镜时长不小于 1，所有分镜时长之和等于视频总时长<br />&nbsp;&nbsp;c. words：分镜提示词，最大长度 512 |
+| `settings` | object | 否 |  | 输出配置相关参数，如清晰度、时长等，见下表 |
+| `options` | object | 否 |  | 通用配置，如回调地址、是否含水印等，见下表 |
+
+**`settings` 子字段**
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `resolution` | string | 否 | 720p | 生成视频的清晰度<br />可选值：`720p`、`1080p`、`4k`<br />- `4k` 仅 `kling-3.0` 支持<br />- `kling-2.6` 生成有声视频时仅支持 `1080p` |
+| `aspect_ratio` | string | 否 | 16:9 | 生成视频的画面纵横比（宽:高）<br />可选值：`16:9`、`9:16`、`1:1` |
+| `duration` | int | 否 | 5 | 生成视频时长，单位：秒<br />- `kling-3.0` / `kling-3.0-turbo`：可选值 `3` ~ `15`（整数）<br />- `kling-2.6` / `kling-2.5-turbo`：可选值 `5`、`10` |
+| `audio` | string | 否 | off | 是否生成带有声音的视频<br />可选值：`native`、`off`<br />- `native`：生成的视频含有与画面适配的声音<br />- `off`：生成的视频不含有声音<br />- 仅 `kling-3.0`、`kling-2.6` 支持；`kling-2.6` 有声时仅支持 1080P |
+| `multi_shot` | boolean | 否 | true | 是否生成多镜头视频<br />- 仅 `kling-3.0` 支持该参数<br />- 当参数值为 `false` 时，即便使用多镜头格式的 prompt 也不会生成多镜头视频 |
+
+**`options` 子字段**
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `callback_url` | string | 否 |  | 本次任务结果回调地址，发送给任务服务；是否投递及消息格式以实际服务行为为准 |
+| `external_task_id` | string | 否 |  | 自定义任务 ID，传入不会覆盖系统生成的任务 ID，但支持通过该 ID 进行任务查询<br />请注意，单用户下需要保证唯一性 |
+| `watermark_info` | object | 否 |  | 是否同时生成含水印的结果，格式示例：`{"enabled": true}`，`enabled` 为布尔值<br />`true` 为生成，`false` 为不生成，默认 `false`；暂不支持自定义水印 |
+
+#### 各模型参数支持范围
+
+| 参数 | kling-3.0 | kling-3.0-turbo | kling-2.6 | kling-2.5-turbo |
+|:---|:---|:---|:---|:---|
+| `resolution` | 720p / 1080p / 4k | 720p / 1080p | 720p / 1080p（有声仅 1080p） | 720p / 1080p |
+| `duration` | 3 ~ 15 | 3 ~ 15 | 5 / 10 | 5 / 10 |
+| `audio` | native / off | 不支持 | native / off | 不支持 |
+| `multi_shot` | 支持 | 不支持（可用多镜头 prompt 格式） | 不支持 | 不支持 |
+
+#### 请求示例
+
+```bash
+curl --request POST \
+  --url https://video.pinducloud.com.cn/kling/text-to-video/kling-3.0 \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "prompt": "一位女孩坐在火车上，望向窗外，神情忧郁，头随火车轻轻摇晃",
+    "settings": {
+      "resolution": "1080p",
+      "aspect_ratio": "16:9",
+      "duration": 5,
+      "audio": "native"
+    },
+    "options": {
+      "external_task_id": "my-task-001"
+    }
+  }'
+```
+
+`kling-2.6` 有声视频示例（有声仅支持 1080P）：
+
+```bash
+curl --request POST \
+  --url https://video.pinducloud.com.cn/kling/text-to-video/kling-2.6 \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "prompt": "海浪轻拍礁石，海鸥在空中盘旋，浪涛声不绝于耳",
+    "settings": {
+      "audio": "native",
+      "resolution": "1080p",
+      "aspect_ratio": "9:16",
+      "duration": 10
+    }
+  }'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, // 错误码；错误详情见 message 字段
+  "message": "string", // 错误信息
+  "request_id": "string", // 请求ID，系统生成，用于跟踪请求、排查问题
+  "data": {
+    "id": "string", // 任务ID，系统生成
+    "status": "string", // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeeded（成功）、failed（失败）
+    "create_time": 1781080778802, // 任务创建时间，Unix时间戳、单位ms
+    "update_time": 1781080794151, // 任务更新时间，Unix时间戳、单位ms
+    "external_id": "string" // 该任务的自定义任务ID（如有）
+  }
+}
+```
+
+---
+
+### 查询任务
+
+新版接口使用统一查询端点 `GET /kling/tasks`，支持按系统任务 ID 或自定义任务 ID 查询、批量查询，详见 [查询任务](/docs/video/kling-new/query)。

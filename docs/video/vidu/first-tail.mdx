@@ -1,0 +1,116 @@
+---
+title: "首尾帧"
+sidebar_label: "04-首尾帧"
+---
+
+# 首尾帧
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+指定首帧和尾帧图片，生成过渡视频。
+
+```text
+POST https://video.pinducloud.com.cn/vidu/ent/v2/start-end2video
+```
+
+---
+
+## 请求参数
+
+### 请求头
+
+| 头部 | 必填 | 说明 |
+|:---|:---:|:---|
+| `Content-Type` | 是 | `application/json` |
+| `Authorization` | 是 | `Bearer sk-your-pinducloud-token` |
+
+### 请求体
+
+| 参数 | 类型 | 必填 | 说明 |
+|:---|:---|:---:|:---|
+| `model` | String | 是 | 模型名称。可选值：`viduq3-turbo`、`viduq3-pro`、`viduq2-pro-fast`、`viduq2-pro`、`viduq2-turbo`、`viduq1`、`viduq1-classic`、`vidu2.0`。 |
+| `images` | Array[String] | 是 | 首尾帧图像。支持 2 张图片，第一张为首帧，第二张为尾帧。<br />注 1：首尾帧分辨率比值需在 0.8–1.25 之间，比例需小于 1:4 或 4:1<br />注 2：支持图片 Base64 编码或 URL<br />注 3：支持 png、jpeg、jpg、webp 格式<br />注 4：图片大小不超过 50 MB<br />注 5：POST body 不超过 20MB，Base64 须含内容类型前缀 |
+| `prompt` | String | 可选 | 文本提示词。字符长度不超过 5000 个字符。<br />注：若使用 `is_rec` 推荐提示词参数，模型将忽略此提示词 |
+| `is_rec` | Bool | 可选 | 是否使用推荐提示词。启用后的本站费用以实际使用日志为准 |
+| `duration` | Int | 可选 | 视频时长（秒）：<br />- `viduq3-pro`、`viduq3-turbo`：默认 5，可选 1–16<br />- `viduq2-pro-fast`、`viduq2-pro`、`viduq2-turbo`：默认 5，可选 1–8<br />- `viduq1`、`viduq1-classic`：默认 5，可选 5<br />- `vidu2.0`：默认 4，可选 4、8 |
+| `seed` | Int | 可选 | 随机种子。不传或传 0 时使用随机数。 |
+| `resolution` | String | 可选 | 分辨率：<br />- `viduq3-pro`、`viduq3-turbo`（1–16s）：默认 720p，可选 540p、720p、1080p<br />- `viduq2-pro-fast`（1–8s）：默认 720p，可选 720p、1080p<br />- `viduq2-pro`、`viduq2-turbo`（1–8s）：默认 720p，可选 540p、720p、1080p<br />- `viduq1`、`viduq1-classic`（5s）：默认 1080p，可选 1080p<br />- `vidu2.0`（4s）：默认 360p，可选 360p、720p、1080p<br />- `vidu2.0`（8s）：默认 720p，可选 720p |
+| `movement_amplitude` | String | 可选 | 运动幅度。默认 `auto`。注：q2、q3 系列模型不生效 |
+| `audio` | Bool | 可选 | 是否使用音视频直出。仅 q3 系列模型支持，默认 `true`。 |
+| `bgm` | Bool | 可选 | 是否添加背景音乐。默认 `false`。注：q3 系列不生效 |
+| `off_peak` | Bool | 可选 | 错峰模式。默认 `false`。 |
+| `watermark` | Bool | 可选 | 是否添加水印。默认不加。 |
+| `wm_position` | Int | 可选 | 水印位置。`1`：左上，`2`：右上，`3`：右下（默认），`4`：左下 |
+| `wm_url` | String | 可选 | 自定义水印图片 URL。 |
+| `payload` | String | 可选 | 透传参数。最多 1048576 个字符。 |
+| `meta_data` | String | 可选 | 元数据标识，JSON 格式字符串，透传字段。 |
+| `callback_url` | String | 可选 | 回调地址。 |
+
+---
+
+## 请求示例
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer sk-your-pinducloud-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "viduq3-pro",
+    "images": [
+      "https://example.com/start-frame.jpeg",
+      "https://example.com/end-frame.jpeg"
+    ],
+    "prompt": "The camera zooms in on the bird, which then flies to the right.",
+    "duration": 5,
+    "resolution": "1080p",
+    "audio": true
+  }' \
+  https://video.pinducloud.com.cn/vidu/ent/v2/start-end2video
+```
+
+---
+
+## 响应参数
+
+| 字段 | 类型 | 说明 |
+|:---|:---|:---|
+| `task_id` | String | 任务 ID |
+| `state` | String | 处理状态：`created`、`queueing`、`processing`、`success`、`failed` |
+| `model` | String | 本次调用的模型名称 |
+| `prompt` | String | 提示词 |
+| `images` | Array[String] | 图像参数 |
+| `duration` | Int | 视频时长 |
+| `seed` | Int | 随机种子 |
+| `resolution` | String | 分辨率 |
+| `bgm` | Bool | 是否添加背景音乐 |
+| `movement_amplitude` | String | 运动幅度 |
+| `payload` | String | 透传参数 |
+| `off_peak` | Bool | 是否使用错峰模式 |
+| `credits` | Int | 任务服务原生积分信息；本站实际扣费以使用日志为准 |
+| `watermark` | Bool | 是否使用水印 |
+| `created_at` | String | 任务创建时间 |
+
+---
+
+## 响应示例
+
+```jsonc
+{
+  "task_id": "{task_id}",
+  "state": "created",
+  "model": "viduq3-pro",
+  "images": [
+    "https://example.com/start-frame.jpeg",
+    "https://example.com/end-frame.jpeg"
+  ],
+  "prompt": "The camera zooms in on the bird, which then flies to the right.",
+  "duration": 5,
+  "seed": 123456,
+  "resolution": "1080p",
+  "audio": true,
+  "payload": "",
+  "off_peak": false,
+  "credits": 8,
+  "created_at": "2025-01-01T15:41:31.968916Z"
+}
+```

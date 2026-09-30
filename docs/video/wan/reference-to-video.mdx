@@ -1,0 +1,195 @@
+---
+title: "参考生视频"
+sidebar_label: "03-参考生视频"
+---
+
+# 参考生视频
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+以参考图片/参考视频中的主体形象（人物、角色、物品等）为基准生成视频，并在提示词中通过引用语法指定各参考素材的用途。适用于保持角色一致性的连续创作场景。
+
+参考生视频包含**两套协议**，请求体结构不同，注意区分：
+
+| 模型 | 协议 | 参考素材字段 | 提示词引用语法 | 分辨率参数 | 音频 | 多镜头 |
+|:---|:---|:---|:---|:---|:---|:---|
+| `wan2.7-r2v`、`wan2.7-r2v-2026-06-12` | 新版 | `input.media`（对象数组，type + url） | 中文「图1 / 视频1」，英文「Image 1 / Video 1」，图与视频**分别计数** | `parameters.resolution`（`720P`/`1080P`） | 默认生成有声视频，无需设置；支持 `reference_voice` 音色参考 | 不支持 `shot_type`，在 prompt 中写分镜脚本实现 |
+| `wan2.6-r2v` | 旧版 | `input.reference_urls`（字符串数组） | `character1`、`character2`（图和视频按数组顺序**统一计数**） | `parameters.size`（宽\*高，如 `1280*720`） | 不支持 `audio` 参数（仅 flash 版支持） | `parameters.shot_type`（`single`/`multi`） |
+| `wan2.6-r2v-flash` | 旧版 | 同 `wan2.6-r2v` | 同上 | 同上 | 支持 `audio`（true 有声 / false 无声） | 同上 |
+
+> ⚠️ **重点：wan2.6-r2v 的参考素材字段是 `reference_urls`（数组，图/视频混传）**。旧字段 `reference_video_urls` 已废弃，其他自造字段名（如 `ref_imgs`）会被官方直接拒绝，报错 `please provide reference_video_urls or reference_urls`。
+
+---
+
+### 提示词引用语法
+
+提示词中通过编号引用参考素材，编号与素材在数组中的顺序一致：
+
+**wan2.7-r2v（图与视频分别计数）**
+
+- 中文用「图1、图2」指代参考图片，「视频1、视频2」指代参考视频；英文写 `Image 1`、`Video 1`（字母与数字间有空格，首字母大写）。
+- 第 1 个 `reference_image` 即「图1」，第 1 个 `reference_video` 即「视频1」，两者可同时存在。
+- 若只有一张图/一个视频，可直接写「参考图片」/「参考视频」。
+- 支持「图1在图2里玩耍」或「图1的猫在图2的房间里玩耍」两种写法。
+- 参考图为多宫格（故事板）时，建议按分镜脚本描述，且单次仅传一张多宫格图。
+
+**wan2.6-r2v（统一计数）**
+
+- 用 `character1`、`character2` 引用参考角色：`reference_urls` 数组中第 1 个 URL 即 `character1`，第 2 个即 `character2`，以此类推（不区分图片或视频）。
+- 每个参考素材应仅包含单一角色。
+
+---
+
+### 创建任务
+
+```text
+POST https://video.pinducloud.com.cn/ali/api/v1/services/aigc/video-generation/video-synthesis
+```
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 是 | application/json | 数据交换格式 |
+| `Authorization` | string | 是 |  | 鉴权信息，`Bearer sk-your-pinducloud-token` |
+
+> 官方要求的 `X-DashScope-Async: enable` 头由平台自动补充，调用时**无需携带**。
+
+#### 请求体 — wan2.7-r2v（新版协议）
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `model` | string | 是 |  | `wan2.7-r2v` 或 `wan2.7-r2v-2026-06-12` |
+| `input.prompt` | string | 是 |  | 提示词，中英文，≤5000 字符（超出截断）<br />引用语法见上文「提示词引用语法」 |
+| `input.negative_prompt` | string | 否 |  | 反向提示词，≤500 字符 |
+| `input.media` | array of object | 是 |  | 参考素材数组。首帧图像最多 1 张；参考图像 + 参考视频至少 1 个且合计 ≤ 5；素材为主体角色时应仅含单一角色 |
+| `input.media[].type` | string | 是 |  | 素材类型：<br />`reference_image` — 参考图像（主体角色/场景参考）<br />`reference_video` — 参考视频（主体角色 + 音色参考，不建议空镜）<br />`first_frame` — 首帧图像（可与主体参考联合控制） |
+| `input.media[].url` | string | 是 |  | 素材地址。图像支持公网 HTTP(S) URL 或 Base64（`data:{MIME_type};base64,{data}`）；视频支持公网 HTTP(S) URL |
+| `input.media[].reference_voice` | string | 否 |  | 音频 URL，指定该素材主体角色的音色（仅参考音色，与说话内容无关）。参考视频含音频且未指定时默认用视频原声；同时传入时 `reference_voice` 优先。建议音频语种与提示词语种一致 |
+| `parameters.resolution` | string | 否 | 1080P | 分辨率档位，可选 `720P`/`1080P`，影响费用 |
+| `parameters.ratio` | string | 否 | 16:9 | 宽高比，可选 `16:9`/`9:16`/`1:1`/`4:3`/`3:4`<br />已传首帧图像时自动忽略，按首帧宽高比生成近似比例 |
+| `parameters.duration` | integer | 否 | 5 | 视频时长（秒），影响费用<br />参考素材含视频时取 2–10 整数；不含视频时取 2–15 整数 |
+| `parameters.prompt_extend` | boolean | 否 | true | 提示词智能改写，短提示词提升明显，但增加耗时 |
+| `parameters.watermark` | boolean | 否 | false | 右下角「AI生成」水印 |
+| `parameters.seed` | integer | 否 | 随机 | 取值 [0, 2147483647]；相同 seed 也不保证结果完全一致 |
+
+#### 请求体 — wan2.6-r2v（旧版协议）
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `model` | string | 是 |  | `wan2.6-r2v` 或 `wan2.6-r2v-flash` |
+| `input.prompt` | string | 是 |  | 提示词，≤1500 字符<br />用 `character1`、`character2` 引用参考角色（按数组顺序统一计数） |
+| `input.negative_prompt` | string | 否 |  | 反向提示词，≤500 字符 |
+| `input.reference_urls` | array of string | 是 |  | 参考文件 URL 数组，**图/视频混传**：图像 0–5 个、视频 0–3 个、图像 + 视频合计 ≤ 5，影响费用<br />⚠️ 旧字段 `reference_video_urls` 已废弃，请勿使用 |
+| `parameters.size` | string | 否 | 1920\*1080 | 输出分辨率，必须写具体像素「宽\*高」（不能写 `1:1` 或 `720P`），影响费用<br />720P 档：`1280*720`(16:9)、`720*1280`(9:16)、`960*960`(1:1)、`1088*832`(4:3)、`832*1088`(3:4)<br />1080P 档：`1920*1080`(16:9)、`1080*1920`(9:16)、`1440*1440`(1:1)、`1632*1248`(4:3)、`1248*1632`(3:4) |
+| `parameters.duration` | integer | 否 | 5 | 视频时长（秒），取 2–10 整数，影响费用 |
+| `parameters.shot_type` | string | 否 | single | 镜头类型：`single` 单镜头 / `multi` 多镜头；优先级高于 prompt 中的描述 |
+| `parameters.audio` | boolean | 否 | true | **仅 `wan2.6-r2v-flash` 支持**。`true` 有声 / `false` 无声（生成无声视频必须显式设为 false），影响费用 |
+| `parameters.watermark` | boolean | 否 | false | 右下角「AI生成」水印 |
+| `parameters.seed` | integer | 否 | 随机 | 取值 [0, 2147483647] |
+
+#### 参考素材限制
+
+| 素材 | 数量 | 格式 | 尺寸/时长 | 大小 |
+|:---|:---|:---|:---|:---|
+| 参考图像 | wan2.7：图 + 视频合计 ≤ 5；wan2.6：图 0–5 且图 + 视频合计 ≤ 5 | JPEG、JPG、PNG（不支持透明通道）、BMP、WEBP | 宽高 240–8000 px；wan2.7 要求宽高比 1:8–8:1 | ≤ 20MB |
+| 参考视频 | wan2.7：图 + 视频合计 ≤ 5；wan2.6：视频 0–3 | MP4、MOV | 时长 1–30 秒；wan2.7 要求宽高 240–4096 px、宽高比 1:8–8:1 | ≤ 100MB |
+| 首帧图像（仅 wan2.7 `first_frame`） | 最多 1 张 | 同参考图像 | 同参考图像 | ≤ 20MB |
+| 参考音频（仅 wan2.7 `reference_voice`） | 每个素材可挂 1 个 | WAV、MP3 | 时长 1–10 秒 | ≤ 15MB |
+
+#### 计费说明
+
+- `usage.duration` 表示该型号的原生用量时长。若任务服务按输入与输出合计报告时长，输入 5 秒、输出 10 秒时可能报告 15 秒；具体字段含义以该型号为准，不能把请求的输出秒数直接当作最终用量。本站实际费用按配置的计费规则结算。
+- 影响费用的参数：分辨率（wan2.7 的 `resolution` / wan2.6 的 `size`）、`duration`、参考素材（wan2.6 的 `reference_urls`）、`audio`（仅 wan2.6-r2v-flash，有声/无声的费用以本站定价为准）。
+
+#### 请求示例 — wan2.7-r2v
+
+```bash
+curl --request POST \
+  --url 'https://video.pinducloud.com.cn/ali/api/v1/services/aigc/video-generation/video-synthesis' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model": "wan2.7-r2v",
+    "input": {
+      "prompt": "图1中的女性，在花园中优雅漫步，裙摆随风轻扬",
+      "media": [
+        {
+          "type": "reference_image",
+          "url": "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20260424/mvzfud/hh-v2v-girl.jpg"
+        }
+      ]
+    },
+    "parameters": {
+      "resolution": "1080P",
+      "duration": 5
+    }
+  }'
+```
+
+#### 请求示例 — wan2.6-r2v
+
+```bash
+curl --request POST \
+  --url 'https://video.pinducloud.com.cn/ali/api/v1/services/aigc/video-generation/video-synthesis' \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model": "wan2.6-r2v",
+    "input": {
+      "prompt": "character1中的人物，漫步于秋日的落叶小径",
+      "reference_urls": [
+        "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20260424/mvzfud/hh-v2v-girl.jpg"
+      ]
+    },
+    "parameters": {
+      "size": "1280*720",
+      "duration": 5
+    }
+  }'
+```
+
+#### 响应示例
+
+**成功：**
+
+```jsonc
+{
+  "output": {
+    "task_status": "PENDING",
+    "task_id": "0385dc79-5ff8-4d82-bcb6-xxxxxx"
+  },
+  "request_id": "4909100c-7b5a-9f92-bfe5-xxxxxx"
+}
+```
+
+**失败：**
+
+```jsonc
+{
+  "code": "InvalidParameter",
+  "message": "please provide reference_video_urls or reference_urls",
+  "request_id": "7438d53d-xxxx"
+}
+```
+
+#### 响应字段
+
+| 字段 | 类型 | 说明 |
+|:---|:---|:---|
+| `output.task_id` | string | 本站公开任务 ID，用于查询本站保留的任务记录 |
+| `output.task_status` | string | 任务状态，创建成功时为 `PENDING` |
+| `request_id` | string | 请求唯一标识 |
+| `code` / `message` | string | 仅创建失败时返回错误码与详情 |
+
+---
+
+### 查询任务
+
+通过创建任务返回的 `task_id` 轮询任务状态，成功后从 `output.video_url` 获取视频地址：
+
+```text
+GET https://video.pinducloud.com.cn/ali/api/v1/tasks/{task_id}
+```
+
+详见 [09-查询任务](/docs/video/wan/query)。

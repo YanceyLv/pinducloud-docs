@@ -1,0 +1,76 @@
+---
+title: "语音合成"
+sidebar_label: "12-语音合成"
+---
+
+# 语音合成
+
+> PinduCloud 提供本页所列接口。请求使用 PinduCloud API Key；模型开通情况以当前账号的可用模型为准，参数按本页对应型号的协议组织。
+
+POST 创建或管理请求可通过 `model_name` 选择账号已开通的可灵型号；未传时读取 `model`，两者都省略时使用 `kling-v1`。即使接口参数表未列出模型字段，也需确保账号已开通所选型号及对应能力。
+
+### 创建任务
+
+```text
+POST https://video.pinducloud.com.cn/kling/v1/audio/tts
+```
+
+文字转语音合成 API，用于从文本生成音频。
+
+#### 请求头
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `Content-Type` | string | 是 | application/json | 数据交换格式 |
+| `Authorization` | string | 是 |  | `Bearer sk-your-pinducloud-token`，使用 PinduCloud API Key |
+
+#### 请求体
+
+| 参数 | 类型 | 必填 | 默认值 | 说明 |
+|:---|:---|:---:|:---|:---|
+| `text` | string | 是 |  | 合成音频的文案<br />- 文本内容最大长度1000，内容过长会返回错误码等信息<br />- 系统会校验文本内容，如有问题会返回错误码等信息 |
+| `voice_id` | string | 是 |  | 音色 ID<br />- 系统提供多种音色可供选择，具体音色效果、音色ID、音色语种对应关系[点此查看](https://docs.qingque.cn/s/home/eZQDvafJ4vXQkP8T9ZPvmye8S?identityId=2E1MlYrrPk4)；音色试听不支持自定义文案<br />- 音色试听文件命名规范：音色名称#音色ID#音色语种 |
+| `voice_language` | string | 是 | zh | 音色语种<br />可选值: `zh`, `en`<br />- 音色语种与音色ID对应，详见上文 |
+| `voice_speed` | float | 否 | 1.0 | 语速<br />- 有效范围：0.8~2.0，精确至小数点后1位，超出部分将自动四舍五入 |
+
+#### 请求示例
+
+```bash
+curl --request POST \
+  --url https://video.pinducloud.com.cn/kling/v1/audio/tts \
+  --header 'Authorization: Bearer sk-your-pinducloud-token' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "text": "Throughout my time in college, several memorable event left a significant impact on my life",
+    "voice_id": "oversea_male1",
+    "voice_language": "en",
+    "voice_speed": 1
+  }'
+```
+
+#### 响应示例
+
+```jsonc
+{
+  "code": 0, // 错误码；错误详情见 message 字段
+  "message": "string", // 错误信息
+  "request_id": "string", // 请求ID，系统生成，用于跟踪请求、排查问题
+  "data": {
+    "task_id": "string", // 任务ID，系统生成
+    "task_status": "string", // 任务状态，枚举值：submitted（已提交）、processing（处理中）、succeed（成功）、failed（失败）
+    "task_status_msg": "string", // 任务状态信息，当任务失败时展示失败原因（如触发平台的内容风控等）
+    "task_result": {
+      "audios": [
+        {
+          "id": "string", // 生成的音频ID；全局唯一；请及时保存生成结果
+          "url": "string", // 生成音频的URL，如 https://p1.a.kwimgs.com/bs2/upload-ylab-stunt/special-effect/output/HB1_PROD_ai_web_46554461/-2878350957757294165/output.mp3（请注意，为下载地址可能有有效期，请及时转存）
+          "duration": "string" // 音频总时长，单位s（秒）
+        }
+      ]
+    },
+    "final_unit_deduction": "string", // 任务服务原生积分信息；本站实际扣费以使用日志为准
+    "created_at": 1722769557708, // 任务创建时间，Unix时间戳、单位ms
+    "updated_at": 1722769557708 // 任务更新时间，Unix时间戳、单位ms
+  }
+}
+```
