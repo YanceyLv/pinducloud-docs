@@ -1,0 +1,141 @@
+---
+title: 创建视频任务
+---
+
+# 创建视频任务
+
+~~~http
+POST /doubao/api/v3/contents/generations/tasks
+~~~
+
+等价路径为 `/doubao/contents/generations/tasks` 和
+`/doubao/v1/contents/generations/tasks`。三条路径均支持 Bearer 与 AK/SK。
+
+## 请求示例
+
+~~~bash
+curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "model": "MODEL_ID",
+    "prompt": "清晨的湖面泛起轻微涟漪，镜头缓慢前移",
+    "duration": 4,
+    "resolution": "480p",
+    "ratio": "16:9",
+    "generate_audio": false,
+    "watermark": false
+  }'
+~~~
+
+## 请求字段
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `model` | string | 是 | 当前 Key 可用的模型名称 |
+| `content` | array | 条件必填 | 文本和媒体内容；与非空 `prompt` 至少提供一种有效输入 |
+| `prompt` | string | 否 | 顶层提示词；`content` 已含文本项时使用内容数组中的文本 |
+| `parameters` | object | 否 | 可包裹本页支持的生成参数；同名字段以包内值为准 |
+| `resolution` | string | 否 | `480p`、`720p`、`1080p`、`4k`，以模型支持范围为准 |
+| `ratio` | string | 否 | `16:9`、`4:3`、`1:1`、`3:4`、`9:16`、`21:9`、`adaptive` |
+| `duration` | integer | 否 | 2.0 系列为 4–15 秒；2.5 为 4–30 秒；`-1` 请求自动时长 |
+| `frames` | integer | 否 | 支持该参数的模型可用；29–289，且满足 `25 + 4n`；2.0 系列不接受 |
+| `generate_audio` | boolean | 否 | 是否生成音频 |
+| `watermark` | boolean | 否 | 是否添加生成标识 |
+| `return_last_frame` | boolean | 否 | 是否请求末帧图片 |
+| `output_format` | string | 否 | 输出格式；2.0 系列仅接受 `mp4`，其他格式需模型支持 |
+| `seed` | integer | 否 | 当前入口范围为 -1–4294967295，效果取决于模型 |
+| `camera_fixed` | boolean | 否 | 固定镜头选项；2.0 系列仅接受 `false` |
+| `service_tier` | string | 否 | `default` 或 `flex`；2.0 系列仅接受 `default` |
+| `draft` | boolean | 否 | 样片模式，须使用支持该模式的模型 |
+| `omni_reference_task_type` | string | 否 | 2.5 的任务类型：`auto`、`reference`、`edit`、`extend` |
+| `callback_url` | string | 否 | 公网 HTTPS 域名地址，最长 4096 字节 |
+| `execution_expires_after` | integer | 否 | 任务过期阈值，单位秒，范围 3600–259200 |
+| `priority` | integer | 否 | 优先级，范围 0–9 |
+| `safety_identifier` | string | 否 | 最长 64 字符的 ASCII 标识 |
+| `tools` | array | 否 | 当前接受 `[{"type":"web_search"}]` |
+| `moderation_options` | object | 否 | 审核选项；具体字段由生成服务校验 |
+
+建议显式指定时长和分辨率。未提供的可选值由服务决定，不能将预估用量视为输出规格。
+
+2.0 标准版接受至 `4k`，Fast/Mini 接受 `480p` 和 `720p`，2.5 接受至 `1080p`。
+模型名称以账号可用模型为准。
+
+参数包示例中，最终使用 4 秒和 `480p`：
+
+~~~json
+{
+  "model": "MODEL_ID",
+  "prompt": "湖面轻微起伏",
+  "duration": 5,
+  "parameters": {
+    "duration": 4,
+    "resolution": "480p"
+  }
+}
+~~~
+
+## 内容数组
+
+| `type` | 内容字段 | `role` |
+| --- | --- | --- |
+| `text` | `text`：非空文本 | 不需要 |
+| `image_url` | `image_url.url` | `first_frame`、`last_frame` 或 `reference_image` |
+| `video_url` | `video_url.url` | `reference_video` |
+| `audio_url` | `audio_url.url` | `reference_audio` |
+| `draft_task` | `draft_task.id` | 不需要 |
+
+单张图片可省略 `role`，按首帧处理；多张图片必须指定角色。首帧和尾帧各最多一张，
+首尾帧模式不能与参考媒体模式混用。2.0 系列的尾帧需要同时提供首帧。
+
+图片和媒体可使用可访问的 URL，或已入库素材的 `asset://<素材 ID>` 引用。
+支持的数据 URI 类型受模型约束。本接口不接收本地文件路径或 multipart 文件。
+
+~~~json
+{
+  "model": "MODEL_ID",
+  "content": [
+    {"type": "text", "text": "保持主体一致，镜头缓慢前移"},
+    {
+      "type": "image_url",
+      "role": "reference_image",
+      "image_url": {"url": "asset://asset-20261030120000-abcde"}
+    }
+  ],
+  "duration": 4,
+  "resolution": "480p"
+}
+~~~
+
+当前入口的音频参考须同时包含图片或视频。2.0 系列最多接受 9 张参考图、3 段参考视频、
+3 段参考音频；2.5 的结构上限分别为 30、10、10。文件规格和内容仍需通过模型审核。
+
+`draft_task` 必须是内容数组中唯一的一项，引用当前用户可访问的任务。
+样片模式要求 `480p`，不能与 `return_last_frame: true` 或 `service_tier: "flex"` 同用。
+2.5 使用首尾帧、`edit` 或 `extend` 时，画面比例应为 `adaptive`；
+`edit` 和 `extend` 均须参考视频，`extend` 最多 3 段，`edit` 使用自动时长。
+
+## 响应
+
+~~~json
+{"id": "task_example"}
+~~~
+
+保存 `id`，通过[查询接口](./query)获取状态和结果。成功受理会产生预扣，完成后按实际结算规则调整。
+创建超时不等于创建失败，不能直接认定没有扣费或任务不存在。
+
+## 回调
+
+设置 `callback_url` 后，服务可向该地址发送状态通知。接收端应处理重复和乱序事件，
+并通过查询接口确认终态。返回任务 ID 不表示通知已送达。
+
+回调使用本站任务标识和公开模型名称，`X-Seedance-Event-ID` 可用于识别重复事件。
+接收地址须直接返回 2xx，不依赖重定向。真人认证的同名参数用于浏览器回跳，含义不同。
+
+参数错误通常返回 HTTP 400：
+
+~~~json
+{"error": {"code": "invalid_request", "message": "请求参数不合法"}}
+~~~
+
+具体 `code` 和 `message` 以实际响应为准。

@@ -1,0 +1,96 @@
+---
+title: 修改、删除与优化素材
+---
+
+# 修改、删除与优化素材
+
+所有操作均须使用当前账号可访问的素材 ID。
+
+## 修改名称
+
+~~~http
+PUT /doubao/api/assets/{asset_id}
+~~~
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `name` | string | 否 | 新名称，非空且最多 64 字符 |
+| `group_id` | string | 否 | 仅可传素材当前所属组；不支持跨组移动 |
+
+至少提供一个字段。不能通过此接口替换文件、URL 或媒体类型。
+
+~~~bash
+curl --request PUT \
+  "$BASE_URL/doubao/api/assets/asset-20261030120100-abcde" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"name":"产品正面图"}'
+~~~
+
+~~~json
+{"code": 0, "message": "ok"}
+~~~
+
+## 删除素材
+
+~~~http
+DELETE /doubao/api/assets/{asset_id}
+~~~
+
+~~~bash
+curl --request DELETE \
+  "$BASE_URL/doubao/api/assets/asset-20261030120100-abcde" \
+  --header "Authorization: Bearer $API_KEY"
+~~~
+
+成功返回 HTTP 200：
+
+~~~json
+{"code": 0, "message": "ok"}
+~~~
+
+删除后，素材不再出现在本组接口的列表和详情中，也不能继续引用。
+存储清理由后台执行，删除不能撤销。不存在或不可见时返回 404。
+
+## 优化素材
+
+~~~http
+POST /doubao/api/assets/{asset_id}/optimize
+~~~
+
+将通用素材按目标模型入库。此操作不生成视频，也不等同于修改图片内容。
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `model_family` | string | 是 | 当前 Key 可用的模型名称或受支持的模型族 |
+
+~~~bash
+curl --request POST \
+  "$BASE_URL/doubao/api/assets/asset-20261030120100-abcde/optimize" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"model_family":"MODEL_ID"}'
+~~~
+
+~~~json
+{
+  "data": {
+    "assetId": "asset-20261030120100-abcde",
+    "assetName": "产品正面图",
+    "assetType": "Image",
+    "status": "PROCESSING",
+    "groupId": "group-20261030120000-abcde",
+    "createdTime": "2026-10-30 12:01:00",
+    "updatedTime": "2026-10-30 12:02:00"
+  },
+  "status": "processing"
+}
+~~~
+
+| 外层 `status` | 含义 |
+| --- | --- |
+| `processing` | 已提交或仍在处理，继续查询素材 |
+| `already_optimized` | 目标入库状态已满足 |
+
+真人素材不能通过此操作转换，须使用已认证组。目标模型无权限时返回 403；
+处理失败或资源并发变化时可能返回 409；服务暂不可用时可能返回 503。

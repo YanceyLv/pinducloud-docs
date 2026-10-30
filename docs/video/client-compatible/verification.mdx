@@ -1,0 +1,132 @@
+---
+title: 真人认证
+---
+
+# 真人认证
+
+认证由素材本人完成。认证成功后取得真人素材组，再向该组上传图片。
+
+## 创建认证会话
+
+~~~http
+POST /doubao/api/assets/liveness/session
+~~~
+
+支持 Bearer 和 AK/SK，请求体为 JSON 对象。
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `model` | string | 否 | 指定可用模型；缺省时在当前 Key 的权限内选择 |
+| `callback_url` | string | 否 | HTTP/HTTPS 浏览器回跳地址，最多 2048 字节；缺省使用本站结果页 |
+
+~~~bash
+curl --request POST "$BASE_URL/doubao/api/assets/liveness/session" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"model":"MODEL_ID"}'
+~~~
+
+~~~json
+{
+  "success": true,
+  "data": {
+    "byted_token": "VALIDATION_TOKEN",
+    "h5_link": "https://verify.example.com/session",
+    "history_id": 123,
+    "suggest_model": "MODEL_ID",
+    "liveness_group": "real"
+  }
+}
+~~~
+
+| 字段 | 说明 |
+| --- | --- |
+| `byted_token` | 本次认证凭证，用于 Action 结果查询 |
+| `h5_link` | 本人认证页面；应完整打开，不删改查询参数 |
+| `history_id` | 本站认证记录编号 |
+| `suggest_model` | 请求中指定的模型，未指定时可能为空 |
+| `liveness_group` | 固定为 `real` |
+
+认证链接有时效；失效后需重新创建会话。不要复用已消费的认证链接或公开认证凭证。
+
+## 查询认证历史
+
+~~~http
+GET /doubao/api/assets/liveness/history
+~~~
+
+| 查询参数 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `group_id` | string | 不筛选 | 按认证组 ID 筛选 |
+| `status` | string | 不筛选 | `pending`、`success`、`failed` |
+| `page` | integer | 1 | 从 1 开始 |
+| `page_size` | integer | 20 | 1–100 |
+
+~~~bash
+curl --get "$BASE_URL/doubao/api/assets/liveness/history" \
+  --header "Authorization: Bearer $API_KEY" \
+  --data-urlencode "status=success"
+~~~
+
+~~~json
+{
+  "success": true,
+  "data": [
+    {
+      "history_id": 123,
+      "group_id": "group-20261030120000-abcde",
+      "status": "success",
+      "result_code": 10000,
+      "created_at": "2026-10-30T12:00:00+08:00",
+      "updated_at": "2026-10-30T12:01:00+08:00"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "page_size": 20
+}
+~~~
+
+等待状态为 `pending`；失败、过期或取消记录归为 `failed`。
+历史接口读取已保存状态，需要主动核验认证结果时可调用
+[GetVisualValidateResult](./actions/verification)。
+
+## 认证回调
+
+~~~http
+GET /doubao/api/assets/liveness/callback
+~~~
+
+该地址由认证流程调用，不使用 Bearer 或 AK/SK。本站生成的回跳地址携带会话 `state`；
+必须完整保留。仅手动拼接 `bytedToken` 不构成有效回调。
+
+可能包含的回跳参数：
+
+| 参数 | 说明 |
+| --- | --- |
+| `state` | 本站会话校验值 |
+| `bytedToken` | 认证凭证；提供时必须与会话匹配 |
+| `resultCode` | 认证结果码，成功值为 `10000` |
+| `algorithmBaseRespCode` | 认证服务子结果码 |
+| `reqMeasureInfoValue` | 本次认证是否计费的标记 |
+| `verify_type` | 认证类型 |
+
+本站会核验认证结果，再显示结果页或跳转至自定义 `callback_url`。
+自定义回跳可能同时包含 `session_id`、`status` 和成功后的 `GroupId`。
+不要仅凭浏览器 URL 中的 `resultCode` 判断素材组已经可用。
+
+认证仍待确认时可能返回 503；会话校验失败返回 404。
+
+## 上传真人图片
+
+取得成功记录中的 `group_id` 后，调用文件上传并设置 `mode=real`：
+
+~~~bash
+curl --request POST "$BASE_URL/doubao/api/assets/upload" \
+  --header "Authorization: Bearer $API_KEY" \
+  --form "group_id=group-20261030120000-abcde" \
+  --form "file=@./portrait.jpg" \
+  --form "mode=real"
+~~~
+
+认证成功与图片审核通过是两个步骤。图片仍须查询至 `ACTIVE`，再用于视频生成。

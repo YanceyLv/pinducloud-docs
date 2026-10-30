@@ -1,0 +1,120 @@
+---
+title: Action 接口约定
+---
+
+# Action 接口约定
+
+使用统一 POST 地址，通过查询参数 `Action` 选择操作。接口支持 Bearer 和本站签发的 AK/SK。
+
+~~~http
+POST /doubao/api/ark/assets?Action={Action}&Version=2024-01-01
+Content-Type: application/json
+~~~
+
+`Version` 可省略，缺省为 `2024-01-01`。`Action` 必须出现一次，`Version` 最多出现一次。
+
+以下地址具有相同的 Action 处理：
+
+| 地址 |
+| --- |
+| `/doubao/api/ark/assets` |
+| `/doubao/v1/ark/asset` |
+| `/doubao/api/v3/asset` |
+| `/doubao` |
+| `/doubao/` |
+
+签名覆盖实际请求路径、查询串和正文。不要在签名后补加 `Action` 或改换别名。
+
+## 操作清单
+
+| 分类 | Action |
+| --- | --- |
+| [素材组](./groups) | `CreateAssetGroup`、`ListAssetGroups`、`GetAssetGroup`、`UpdateAssetGroup`、`DeleteAssetGroup` |
+| [素材](./assets) | `CreateAsset`、`ListAssets`、`GetAsset`、`UpdateAsset`、`DeleteAsset` |
+| [真人认证](./verification) | `CreateVisualValidateSession`、`GetVisualValidateResult` |
+
+素材组和素材操作的 `ProjectName` 仅支持缺省或 `default`。
+请求字段区分大小写，未知字段、错误类型和显式 `null` 会被拒绝。
+素材管理 Action 的 JSON 正文上限为 64 KiB；文件上传使用 [REST 上传接口](../assets/upload)。
+
+## 分页
+
+`ListAssetGroups` 和 `ListAssets` 支持两种分页方式，不得混用。
+
+| 方式 | 请求字段 | 响应 |
+| --- | --- | --- |
+| 翻页凭证 | `MaxResults`、`NextToken` | `Items`；存在后续数据时返回 `NextToken` |
+| 页码 | 同时提供 `PageNumber` 和 `PageSize` | `Items`、`TotalCount`、`PageNumber`、`PageSize` |
+
+未提供分页字段时，使用翻页凭证方式，每页 10 项。
+`MaxResults` 和 `PageSize` 最大为 100；大于 100 按 100，小于等于 0 按 10。
+页码从 1 开始，最大为 21474836。超出数据末页时返回空数组。
+
+下一页使用响应中的 `NextToken` 原值；不再返回该字段表示遍历结束。
+不要自行构造或修改凭证。
+
+~~~bash
+curl --request POST \
+  "$BASE_URL/doubao/api/ark/assets?Action=ListAssets" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"MaxResults":10,"ProjectName":"default"}'
+~~~
+
+## 响应外形
+
+成功响应：
+
+~~~json
+{
+  "ResponseMetadata": {
+    "RequestId": "request_example",
+    "Action": "ListAssets",
+    "Version": "2024-01-01",
+    "Service": "ark",
+    "Region": "cn-beijing"
+  },
+  "Result": {"Items": []}
+}
+~~~
+
+各操作页只展示 `Result` 或必要字段，实际响应带有 `ResponseMetadata`。
+
+业务错误：
+
+~~~json
+{
+  "ResponseMetadata": {
+    "RequestId": "request_example",
+    "Action": "GetAsset",
+    "Version": "2024-01-01",
+    "Service": "ark",
+    "Region": "cn-beijing",
+    "Error": {
+      "Code": "ResourceNotFound",
+      "Message": "resource not found"
+    }
+  }
+}
+~~~
+
+| 错误 | 常见 HTTP 状态 | 说明 |
+| --- | --- | --- |
+| `ValidationError` | 400 | 参数、类型或组合错误 |
+| `ResourceNotFound` | 404 | 素材或组不存在、已删除或不可见 |
+| `ResourceDeleting` | 409 | 资源状态不允许操作 |
+| `ServiceUnavailable` | 503 | 暂时无法完成操作 |
+| `OperationFailed` | 502 | 素材操作失败 |
+
+鉴权和限流发生在业务处理前，错误可能不使用 Action 外形。
+客户端先读取 HTTP 状态，再读取 `ResponseMetadata.Error`。
+
+## 与 REST 的关系
+
+两套接口读取同一账号的素材记录。REST 的 `group_id` 对应 Action 的 `Id` 或 `GroupId`，
+REST 的 `assetId` 对应 Action 的 `Id`。请以具体字段表为准。
+
+客户 Action 删除成功返回 HTTP 200 和空 `Result`。资源立即不可使用，存储由后台清理。
+
+已有入口 `POST /doubao/v2/assets` 保留独立约定：仅使用 Bearer，必须显式提供
+`Version=2024-01-01`，删除受理返回 HTTP 202。新的客户端使用本页地址。

@@ -1,0 +1,71 @@
+---
+title: 素材下载与公开链接
+---
+
+# 素材下载与公开链接
+
+## 鉴权下载
+
+~~~http
+GET /doubao/api/assets/{asset_id}/download
+~~~
+
+支持 Bearer 和 AK/SK，返回素材文件的二进制内容。
+
+~~~bash
+curl "$BASE_URL/doubao/api/assets/asset-20261030120100-abcde/download" \
+  --header "Authorization: Bearer $API_KEY" \
+  --output reference.bin
+~~~
+
+响应包含素材类型对应的 `Content-Type` 和下载文件名。
+不存在、已删除或暂无可下载内容时返回 404；读取失败时可能返回 502。
+
+## 签发公开链接
+
+~~~http
+GET /doubao/api/assets/{asset_id}/public-url
+~~~
+
+~~~bash
+curl "$BASE_URL/doubao/api/assets/asset-20261030120100-abcde/public-url" \
+  --header "Authorization: Bearer $API_KEY"
+~~~
+
+~~~json
+{
+  "success": true,
+  "data": {
+    "url": "https://video.example.com/doubao/api/a/asset-20261030120100-abcde?e=1793325600&s=EXAMPLE_SIGNATURE",
+    "expires_in": 7200
+  }
+}
+~~~
+
+`url` 可直接交给需要读取素材的服务。`expires_in` 为有效期秒数，固定为 7200。
+请使用实际返回的完整 URL，不自行生成或修改签名参数。
+
+## 公开下载
+
+~~~http
+GET /doubao/api/a/{asset_id}?e={expires_at}&s={signature}
+~~~
+
+| 查询参数 | 说明 |
+| --- | --- |
+| `e` | 链接过期时间，Unix 秒 |
+| `s` | 32 位十六进制签名，绑定素材 ID 和过期时间 |
+
+此请求无需 API Key 或 AK/SK，链接本身具有读取权限。
+
+~~~bash
+curl "$PUBLIC_URL" --output reference.bin
+~~~
+
+成功时返回二进制流。签名无效、过期、资源已删除或不可见时返回 HTTP 404。
+签发服务不可用时，签发接口返回 503。单次下载内容上限为 200 MiB。
+
+旧格式 `GET /doubao/api/assets/public/{asset_id}?e=...&access=...`
+继续验证已签发链接，仍受原过期时间约束。新的签发请求返回 `/doubao/api/a/...`。
+
+公开链接不应出现在公开日志或页面中。链接过期后重新签发，不能通过修改 `e` 延长有效期。

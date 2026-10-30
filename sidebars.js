@@ -22,6 +22,47 @@ const sidebars = {
           items: [
             {
               type: 'category',
+              label: '豆包 Seedance 兼容接口',
+              collapsed: true,
+              link: {type: 'doc', id: 'video/client-compatible/overview'},
+              items: [
+                'video/client-compatible/authentication',
+                {
+                  type: 'category',
+                  label: '视频任务',
+                  items: [
+                    'video/client-compatible/video/create',
+                    'video/client-compatible/video/query',
+                    'video/client-compatible/video/delete',
+                  ],
+                },
+                {
+                  type: 'category',
+                  label: '素材管理',
+                  items: [
+                    'video/client-compatible/assets/groups',
+                    'video/client-compatible/assets/upload',
+                    'video/client-compatible/assets/query',
+                    'video/client-compatible/assets/manage',
+                    'video/client-compatible/assets/download',
+                    'video/client-compatible/assets/summary',
+                  ],
+                },
+                'video/client-compatible/verification',
+                {
+                  type: 'category',
+                  label: 'Action 接口',
+                  link: {type: 'doc', id: 'video/client-compatible/actions/overview'},
+                  items: [
+                    'video/client-compatible/actions/groups',
+                    'video/client-compatible/actions/assets',
+                    'video/client-compatible/actions/verification',
+                  ],
+                },
+              ],
+            },
+            {
+              type: 'category',
               label: '豆包 Seedance 视频生成',
               collapsed: false,
               link: {type: 'doc', id: 'video/seedance/overview'},

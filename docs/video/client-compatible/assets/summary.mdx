@@ -1,0 +1,107 @@
+---
+title: 素材树与用量汇总
+---
+
+# 素材树与用量汇总
+
+这些接口按当前账号统计可见资源。同账号的不同 Key 读取同一素材库。
+
+## 素材树
+
+~~~http
+GET /doubao/api/assets/tree
+~~~
+
+无查询参数。返回素材组及其组内素材：
+
+~~~json
+{
+  "data": [
+    {
+      "group_id": "group-20261030120000-abcde",
+      "name": "产品参考",
+      "description": "",
+      "group_type": "AIGC",
+      "bind_model": "MODEL_ID",
+      "asset_count": 1,
+      "status": 1,
+      "create_time": "2026-10-30T12:00:00+08:00",
+      "update_time": "2026-10-30T12:00:00+08:00",
+      "assets": [
+        {
+          "assetId": "asset-20261030120100-abcde",
+          "assetName": "产品正面",
+          "assetType": "Image",
+          "status": "ACTIVE",
+          "groupId": "group-20261030120000-abcde",
+          "createdTime": "2026-10-30 12:01:00",
+          "updatedTime": "2026-10-30 12:01:30"
+        }
+      ]
+    }
+  ]
+}
+~~~
+
+空组的 `assets` 为空数组。仅包含有组归属的可见素材，已删除记录不返回。
+大量素材应优先使用分页列表。
+
+## 数量汇总
+
+~~~http
+GET /doubao/api/assets/summary
+~~~
+
+无查询参数。
+
+~~~json
+{"data": {"group_count": 3, "asset_count": 12}}
+~~~
+
+`group_count` 为可见组数，`asset_count` 为可见素材数，包括尚在处理和审核失败的素材。
+
+## 用量汇总行
+
+~~~http
+GET /doubao/api/assets/client-list
+~~~
+
+| 查询参数 | 默认值 | 说明 |
+| --- | --- | --- |
+| `page` | 1 | 页码 |
+| `page_size` | 20 | 1–100；越界或非法值按 20 处理 |
+
+~~~json
+{
+  "data": [
+    {
+      "clientKey": "sk****ab",
+      "clientName": "业务调用",
+      "displayKey": "sk****ab",
+      "groupCount": 3,
+      "assetCount": 12,
+      "activeCount": 10,
+      "channelCount": 1
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "page_size": 20
+}
+~~~
+
+| 字段 | 说明 |
+| --- | --- |
+| `clientKey`、`displayKey` | 当前 Key 的掩码 |
+| `clientName` | 当前 Key 名称 |
+| `groupCount` | 当前账号可见素材组数 |
+| `assetCount` | 当前账号可见素材数 |
+| `activeCount` | 当前账号可用素材数 |
+| `channelCount` | 素材关联的服务位置数量，供参考 |
+
+当前返回一条汇总行，后续页为空。这些数量不表示该 Key 单独创建的资源数，也不表示视频消费金额。
+
+~~~bash
+curl "$BASE_URL/doubao/api/assets/summary" \
+  --header "Authorization: Bearer $API_KEY"
+~~~

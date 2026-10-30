@@ -1,0 +1,220 @@
+---
+title: 鉴权与签名凭据
+---
+
+# 鉴权与签名凭据
+
+## Bearer 鉴权
+
+使用当前用户的 API Key：
+
+~~~http
+Authorization: Bearer YOUR_API_KEY
+~~~
+
+需要鉴权的视频、素材 REST 和 Action 接口也接受 AK/SK 签名。
+公开下载链接和真人认证回调采用各自的验证方式，无需携带 API Key。
+
+## 签发 AK/SK
+
+~~~http
+POST /api/token/aksk
+~~~
+
+普通用户可使用自己的 API Key 签发，无需管理员权限。此管理接口使用 Bearer，
+路径不带 `/doubao`。
+
+~~~bash
+curl --request POST "$BASE_URL/api/token/aksk" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{}'
+~~~
+
+请求体可省略，或使用 `{}`。可选字段 `token_id` 必须是当前 Bearer Key 自身的编号。
+
+~~~json
+{
+  "success": true,
+  "message": "",
+  "data": {
+    "token_id": 123,
+    "access_key": "YOUR_ACCESS_KEY",
+    "secret_key": "YOUR_SECRET_KEY",
+    "created_at": 1793318400
+  }
+}
+~~~
+
+`secret_key` 仅在此次响应返回。再次签发会立即使该 Key 的旧 AK/SK 失效。
+
+## 查询凭据状态
+
+~~~http
+GET /api/token/aksk
+~~~
+
+~~~bash
+curl "$BASE_URL/api/token/aksk" \
+  --header "Authorization: Bearer $API_KEY"
+~~~
+
+已签发时返回 `enabled: true`、`access_key` 和 `created_at`，不返回 SK。
+尚未签发或已吊销时返回 `enabled: false`。可选查询参数 `token_id` 仍只能指向当前 Key。
+
+~~~json
+{
+  "success": true,
+  "message": "",
+  "data": {
+    "token_id": 123,
+    "enabled": false
+  }
+}
+~~~
+
+## 吊销凭据
+
+~~~http
+DELETE /api/token/aksk
+~~~
+
+~~~bash
+curl --request DELETE "$BASE_URL/api/token/aksk" \
+  --header "Authorization: Bearer $API_KEY"
+~~~
+
+成功响应包含 `token_id` 和 `enabled: false`。重复吊销仍返回成功。
+该操作仅吊销 AK/SK，不删除 API Key。
+
+AK/SK 绑定签发时使用的 Key，并沿用其权限和额度。原 Key 被停用、删除或失效后，
+这组 AK/SK 不能继续使用。SK 遗失时需重新签发。
+
+## 请求签名
+
+~~~http
+Authorization: HMAC-SHA256 Credential=<AK>/<YYYYMMDD>/<region>/<service>/request, SignedHeaders=<headers>, Signature=<signature>
+X-Date: YYYYMMDDTHHMMSSZ
+~~~
+
+| 项目 | 约定 |
+| --- | --- |
+| 算法 | HMAC-SHA256 |
+| 时间 | `X-Date` 使用 UTC，与 Credential 中的日期一致；允许偏差不超过 15 分钟 |
+| 必签头 | `host`、`x-date`；头名小写，按签名中的顺序拼接 |
+| 正文摘要 | SHA-256 十六进制；GET 无正文时也计算空字节串摘要 |
+| 可选头 | `X-Content-Sha256`；提供时必须与实际发送正文一致 |
+| 路径 | 最终请求路径，含 `/doubao`；按 RFC 3986 编码，保留分隔斜杠 |
+| 查询串 | 按键排序并编码，空格使用 `%20`；同名键的值保持原顺序 |
+
+规范请求由以下内容以换行符连接：
+
+~~~text
+HTTP_METHOD
+ENCODED_PATH
+CANONICAL_QUERY
+CANONICAL_HEADERS
+SIGNED_HEADERS
+BODY_SHA256
+~~~
+
+`CANONICAL_HEADERS` 每行形如 `name:value`，最后一行也以换行符结束。
+待签名字符串为：
+
+~~~text
+HMAC-SHA256
+X_DATE
+YYYYMMDD/region/service/request
+SHA256_OF_CANONICAL_REQUEST
+~~~
+
+以 SK 为初始 HMAC 密钥，依次对日期、region、service、`request` 派生密钥，
+再签署待签名字符串。以下示例使用 `cn-beijing` 和 `ark`；客户端应在派生与 Credential 中使用同一组值。
+
+## Python 示例
+
+凭据从环境变量读取。示例查询素材组，不创建资源。
+
+~~~python
+import hashlib
+import hmac
+import json
+import os
+from datetime import datetime, timezone
+from urllib.parse import parse_qsl, quote, unquote, urlencode, urlsplit, urlunsplit
+from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+
+class NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def mac(key, value):
+    return hmac.new(key, value.encode("utf-8"), hashlib.sha256).digest()
+
+
+def signed_request(method, target, payload=None):
+    method = method.upper()
+    parts = urlsplit(target)
+    if parts.scheme != "https" or not parts.hostname or parts.username is not None:
+        raise ValueError("Use an HTTPS URL without embedded credentials")
+
+    hostname = parts.hostname
+    host = "[" + hostname + "]" if ":" in hostname else hostname
+    authority = host if parts.port is None else host + ":" + str(parts.port)
+    if parts.port not in (None, 80, 443):
+        host += ":" + str(parts.port)
+
+    path = quote(unquote(parts.path or "/"), safe="/-_.~")
+    pairs = sorted(parse_qsl(parts.query, keep_blank_values=True), key=lambda item: item[0])
+    query = urlencode(pairs, quote_via=quote, safe="-_.~")
+    target = urlunsplit((parts.scheme, authority, path, query, ""))
+
+    body = b"" if payload is None else json.dumps(
+        payload, ensure_ascii=False, separators=(",", ":")
+    ).encode("utf-8")
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    date = stamp[:8]
+    scope = date + "/cn-beijing/ark/request"
+    digest = hashlib.sha256(body).hexdigest()
+    headers = {
+        "content-type": "application/json",
+        "host": host,
+        "x-content-sha256": digest,
+        "x-date": stamp,
+    }
+    names = ";".join(sorted(headers))
+    canonical_headers = "".join(
+        name + ":" + headers[name].strip() + "\n" for name in sorted(headers)
+    )
+    canonical = "\n".join([
+        method, path, query, canonical_headers, names, digest
+    ])
+    to_sign = "\n".join([
+        "HMAC-SHA256", stamp, scope,
+        hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
+    ])
+    key = os.environ["SECRET_KEY"].encode("utf-8")
+    for value in (date, "cn-beijing", "ark", "request"):
+        key = mac(key, value)
+    signature = mac(key, to_sign).hex()
+    headers["Authorization"] = (
+        "HMAC-SHA256 Credential=" + os.environ["ACCESS_KEY"] + "/" + scope
+        + ", SignedHeaders=" + names + ", Signature=" + signature
+    )
+    request = Request(
+        target, data=None if payload is None else body,
+        headers=headers, method=method
+    )
+    with build_opener(NoRedirect()).open(request, timeout=30) as response:
+        return json.load(response)
+
+
+base = os.environ["BASE_URL"].rstrip("/")
+result = signed_request("GET", base + "/doubao/api/assets/groups")
+print(json.dumps(result, ensure_ascii=False))
+~~~
+
+文件上传须对实际发送的 multipart 字节签名，包括 boundary 和文件内容。
+完成签名后不得重新编码正文、修改查询串或改变请求路径。签名不代替业务幂等处理。

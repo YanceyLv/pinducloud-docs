@@ -1,0 +1,123 @@
+---
+title: 素材组
+---
+
+# 素材组
+
+本页接口均支持 Bearer 和 AK/SK。素材组属于当前账号，同账号的有效 Key 可以管理这些组。
+
+## 查询素材组
+
+~~~http
+GET /doubao/api/assets/groups
+~~~
+
+| 查询参数 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `group_type` | string | 不筛选 | `AIGC` 或 `LivenessFace` |
+| `page` | integer | 1 | 从 1 开始 |
+| `page_size` | integer | 20 | 1–100；越界或非法值按 20 处理 |
+
+~~~bash
+curl --get "$BASE_URL/doubao/api/assets/groups" \
+  --header "Authorization: Bearer $API_KEY" \
+  --data-urlencode "group_type=AIGC" \
+  --data-urlencode "page=1" \
+  --data-urlencode "page_size=20"
+~~~
+
+~~~json
+{
+  "data": [
+    {
+      "group_id": "group-20261030120000-abcde",
+      "name": "产品参考",
+      "description": "产品图片",
+      "group_type": "AIGC",
+      "bind_model": "MODEL_ID",
+      "asset_count": 2,
+      "status": 1,
+      "create_time": "2026-10-30T12:00:00+08:00",
+      "update_time": "2026-10-30T12:00:00+08:00"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "page_size": 20
+}
+~~~
+
+`asset_count` 包含组内未删除的素材；`status: 1` 表示正常。
+时间为带时区的 RFC 3339 字符串。
+
+## 创建素材组
+
+~~~http
+POST /doubao/api/assets/groups
+~~~
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `name` | string | 是 | 1–64 字符 |
+| `bind_model` | string | 是 | 当前 Key 可用的模型名称或受支持的模型族 |
+| `description` | string | 否 | 最多 1024 字符 |
+| `type` | string | 否 | 仅接受 `aigc`，不区分大小写；缺省为 `AIGC` |
+| `group_type` | string | 否 | 与 `type` 同义；非空时优先采用 |
+
+~~~bash
+curl --request POST "$BASE_URL/doubao/api/assets/groups" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"name":"产品参考","bind_model":"MODEL_ID","type":"AIGC"}'
+~~~
+
+成功返回 HTTP 200，`data` 为上面的素材组对象。创建时素材数量为 0。
+模型不在 Key 的可用范围内，或没有可用素材服务时，会返回错误。
+
+真人素材组必须通过[真人认证](../verification)创建，不能把 `type` 设置为真人类型来跳过认证。
+
+## 更新素材组
+
+~~~http
+PUT /doubao/api/assets/groups/{group_id}
+~~~
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `name` | string | 否 | 非空新名称，最多 64 字符 |
+| `description` | string | 否 | 新描述，最多 1024 字符；空字符串清空描述 |
+
+至少提供一个字段。不能通过此接口改变类型。
+
+~~~bash
+curl --request PUT \
+  "$BASE_URL/doubao/api/assets/groups/group-20261030120000-abcde" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"name":"产品参考图","description":"已整理"}'
+~~~
+
+~~~json
+{"code": 0, "message": "ok"}
+~~~
+
+## 删除素材组
+
+~~~http
+DELETE /doubao/api/assets/groups/{group_id}
+~~~
+
+~~~bash
+curl --request DELETE \
+  "$BASE_URL/doubao/api/assets/groups/group-20261030120000-abcde" \
+  --header "Authorization: Bearer $API_KEY"
+~~~
+
+成功返回 HTTP 200：
+
+~~~json
+{"code": 0, "message": "ok"}
+~~~
+
+删除会同时使组内素材不可用，普通组和认证组均适用。后台继续执行存储清理。
+资源不存在或不属于当前账号时返回 404；删除不能撤销。

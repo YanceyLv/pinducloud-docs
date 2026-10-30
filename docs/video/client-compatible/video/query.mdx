@@ -1,0 +1,104 @@
+---
+title: 查询视频任务
+---
+
+# 查询视频任务
+
+## 查询单个任务
+
+~~~http
+GET /doubao/api/v3/contents/generations/tasks/{task_id}
+~~~
+
+使用创建响应中的 `id`。同一用户的有效 Key 可查询该用户的可见任务。
+
+~~~bash
+curl "$BASE_URL/doubao/api/v3/contents/generations/tasks/task_example" \
+  --header "Authorization: Bearer $API_KEY"
+~~~
+
+~~~json
+{
+  "id": "task_example",
+  "model": "MODEL_ID",
+  "status": "succeeded",
+  "created_at": 1793318400,
+  "updated_at": 1793318460,
+  "content": {"video_url": "https://media.example.com/result.mp4"},
+  "usage": {"completion_tokens": 24000, "total_tokens": 24000}
+}
+~~~
+
+| 字段 | 说明 |
+| --- | --- |
+| `id` | 本站任务 ID |
+| `model` | 调用时使用的公开模型名称 |
+| `status` | 任务状态 |
+| `content.video_url` | 成功后的结果地址 |
+| `content.last_frame_url` | 请求末帧且服务返回时提供 |
+| `created_at`、`updated_at` | Unix 秒时间戳 |
+| `usage` | 服务实际返回的用量 |
+| `error` | 失败原因，可能含 `code`、`message` |
+
+时长、分辨率、服务等级、样片标记等可选字段以实际响应为准，客户端应允许字段缺省。
+媒体地址可能失效，应及时下载或保存。
+
+| 状态 | 含义 |
+| --- | --- |
+| `queued` | 等待处理 |
+| `running` | 处理中 |
+| `succeeded` | 已成功 |
+| `failed` | 已失败 |
+| `cancelled` | 已确认取消 |
+| `expired` | 已收到过期终态 |
+
+查询失败不等于任务失败。对 429 或临时服务错误按提示退避，再次查询；不要因此重新提交生成任务。
+
+资源不存在或不可见时返回 HTTP 404：
+
+~~~json
+{"code": "task_not_exist", "message": "task_not_exist", "data": null}
+~~~
+
+## 查询任务列表
+
+~~~http
+GET /doubao/api/v3/contents/generations/tasks
+~~~
+
+| 查询参数 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `page_num` | integer | 1 | 1–500 |
+| `page_size` | integer | 20 | 1–500 |
+| `filter.model` | string | 不筛选 | 公开模型名称，最多 191 字符 |
+| `filter.status` | string | 不筛选 | `queued`、`running`、`succeeded`、`failed`、`cancelled` |
+| `filter.service_tier` | string | `default` | `default` 或 `flex` |
+| `filter.task_ids` | string | 不筛选 | 可重复，最多 100 个 ID，每个最多 191 字符 |
+
+列表范围为当前用户最近七天的可见任务。未知查询参数和不允许的重复参数会被拒绝。
+
+~~~bash
+curl --get "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
+  --header "Authorization: Bearer $API_KEY" \
+  --data-urlencode "page_num=1" \
+  --data-urlencode "page_size=20" \
+  --data-urlencode "filter.status=succeeded" \
+  --data-urlencode "filter.task_ids=task_example"
+~~~
+
+~~~json
+{
+  "items": [
+    {
+      "id": "task_example",
+      "model": "MODEL_ID",
+      "status": "succeeded",
+      "content": {"video_url": "https://media.example.com/result.mp4"}
+    }
+  ],
+  "total": 1
+}
+~~~
+
+单任务和列表查询均可使用 `/doubao/contents/generations/tasks` 或
+`/doubao/v1/contents/generations/tasks` 作为等价前缀。查询请求不携带正文。

@@ -1,0 +1,47 @@
+---
+title: 取消或删除视频任务
+---
+
+# 取消或删除视频任务
+
+~~~http
+DELETE /doubao/api/v3/contents/generations/tasks/{task_id}
+~~~
+
+等价路径为 `/doubao/contents/generations/tasks/{task_id}` 和
+`/doubao/v1/contents/generations/tasks/{task_id}`。请求不携带正文。
+
+~~~bash
+curl --request DELETE \
+  "$BASE_URL/doubao/api/v3/contents/generations/tasks/task_example" \
+  --header "Authorization: Bearer $API_KEY"
+~~~
+
+服务先核对任务状态，再执行操作。任务必须属于当前用户，原任务使用的服务仍须可用。
+
+| 情况 | 处理 |
+| --- | --- |
+| 排队任务确认取消 | 任务显示 `cancelled`，按取消结果结算 |
+| 已完成任务确认删除 | 本组查询接口返回 404，列表不再显示；已完成任务删除不退款 |
+| 运行中的任务 | 是否允许取消取决于生成服务；未确认成功时返回错误 |
+| 状态或结果无法确认 | 保留任务及待核对状态，不能按成功处理 |
+
+成功响应为 HTTP 200：
+
+~~~json
+{}
+~~~
+
+取消可能需要等待服务确认，客户端应允许约 90 秒的请求等待时间。
+响应不明确时先查询任务；只对确认需要重试的删除操作重试，不重新创建视频。
+
+| 状态或错误码 | 说明 |
+| --- | --- |
+| 404 | 任务不存在、不可见或已删除 |
+| `task_channel_unavailable`、`task_channel_disabled` | 原任务服务不可用 |
+| `task_action_not_supported` | 当前任务服务不支持此操作 |
+| `task_cancel_pending` | 操作结果或取消结算尚待确认 |
+| `task_delete_pending` | 删除状态同步未完成，可重试删除 |
+| `task_settlement_unavailable` | 最终用量尚待核对，不能据此认定已退款 |
+
+错误响应通常为 `{"error":{"code":"...","message":"..."}}`，HTTP 状态及错误码以实际响应为准。

@@ -1,0 +1,99 @@
+---
+title: 登记与上传素材
+---
+
+# 登记与上传素材
+
+先取得素材组的 `group_id`。普通素材使用普通组；真人图片使用认证成功的组。
+接口支持 Bearer 和 AK/SK，成功响应中的素材可能仍需审核。
+
+## 通过 URL 登记
+
+~~~http
+POST /doubao/api/assets
+~~~
+
+| 字段 | 类型 | 必填 | 默认值及说明 |
+| --- | --- | --- | --- |
+| `group_id` | string | 是 | 当前账号的素材组 |
+| `url` | string | 是 | 可访问的公网 HTTP/HTTPS 地址 |
+| `name` | string | 否 | 最多 64 字符；未填写时取 URL 文件名 |
+| `asset_type` | string | 否 | `Image`、`Video`、`Audio`；默认 `Image` |
+
+~~~bash
+curl --request POST "$BASE_URL/doubao/api/assets" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "group_id":"group-20261030120000-abcde",
+    "url":"https://media.example.com/reference.png",
+    "name":"产品正面",
+    "asset_type":"Image"
+  }'
+~~~
+
+URL 必须在素材读取期间保持有效。此操作不会自动把 URL 原件复制为本站上传文件。
+
+## 上传本地图片
+
+~~~http
+POST /doubao/api/assets/upload
+Content-Type: multipart/form-data
+~~~
+
+| 表单字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `group_id` | string | 是 | 当前账号的素材组 |
+| `file` | file | 是 | 图片文件 |
+| `name` | string | 否 | 最多 64 字符；缺省使用文件名 |
+| `mode` | string | 否 | `link`、`library` 或 `real` |
+
+支持 `png`、`jpg`、`jpeg`、`webp`、`gif`、`bmp`，单文件最多 50 MiB。
+文件须可解码，宽高均不得超过 6000 像素。入库模式还需通过素材审核。
+
+| 模式 | 行为 |
+| --- | --- |
+| `link` | 保存为通用素材，成功后立即可用 |
+| `library` | 保存文件并提交入库，等待审核 |
+| `real` | 向已认证的真人组上传图片，等待审核 |
+
+未提供 `mode` 时，普通组使用 `link`，真人组使用 `real`。不进行自动人像检测。
+`real` 不能用于普通组，真人组也不能使用 `link` 绕过认证流程。
+
+~~~bash
+curl --request POST "$BASE_URL/doubao/api/assets/upload" \
+  --header "Authorization: Bearer $API_KEY" \
+  --form "group_id=group-20261030120000-abcde" \
+  --form "file=@./reference.png" \
+  --form "name=产品正面" \
+  --form "mode=library"
+~~~
+
+使用 AK/SK 上传时，先生成完整 multipart 正文，再对这些字节签名。
+不要在签名完成后让 HTTP 客户端重新生成 boundary。
+
+## 响应与后续查询
+
+成功返回 HTTP 200：
+
+~~~json
+{
+  "data": {
+    "assetId": "asset-20261030120100-abcde",
+    "assetName": "产品正面",
+    "assetType": "Image",
+    "status": "PROCESSING",
+    "groupId": "group-20261030120000-abcde",
+    "createdTime": "2026-10-30 12:01:00",
+    "updatedTime": "2026-10-30 12:01:00"
+  }
+}
+~~~
+
+`link` 模式成功时通常为 `ACTIVE`；其他模式需[查询素材](./query)至 `ACTIVE` 后再引用。
+素材标识采用 `assetId`，视频输入使用 `asset://<assetId>`。
+
+常见错误包括请求参数错误、文件超限、素材组不可见、组正在删除、认证组未就绪或存储不可用。
+错误响应为 `{"error":"错误说明"}`，状态以实际响应为准。
+
+素材容量按账号累计。达到数量或存储容量限制时，需要删除不再使用的素材。

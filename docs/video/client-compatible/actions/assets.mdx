@@ -1,0 +1,176 @@
+---
+title: 素材 Action
+---
+
+# 素材 Action
+
+所有操作使用 `POST /doubao/api/ark/assets?Action=<操作名>`。
+接口约定见[Action 接口约定](./overview)。
+
+## CreateAsset
+
+~~~http
+POST /doubao/api/ark/assets?Action=CreateAsset
+~~~
+
+通过公网 URL 登记素材。
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `GroupId` | string | 是 | 当前账号的素材组 |
+| `URL` | string | 是 | 公网 HTTP/HTTPS 地址，最多 2048 字节 |
+| `AssetType` | string | 是 | `Image`、`Video` 或 `Audio` |
+| `Name` | string | 否 | 提供时须非空，最多 64 字符 |
+| `ProjectName` | string | 否 | 缺省或 `default` |
+
+~~~bash
+curl --request POST \
+  "$BASE_URL/doubao/api/ark/assets?Action=CreateAsset" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "GroupId":"group-20261030120000-abcde",
+    "URL":"https://media.example.com/reference.png",
+    "AssetType":"Image",
+    "Name":"产品正面"
+  }'
+~~~
+
+`Result`：
+
+~~~json
+{"Id": "asset-20261030120100-abcde"}
+~~~
+
+HTTP 200 表示已登记，素材通常仍在处理。查询至 `Active` 后才能用于视频。
+本接口不接收 Base64 或本地文件；文件使用 [REST 上传](../assets/upload)。
+
+## ListAssets
+
+~~~http
+POST /doubao/api/ark/assets?Action=ListAssets
+~~~
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `Filter.GroupType` | string | 否 | `AIGC` 或 `LivenessFace` |
+| `Filter.GroupIds` | string[] | 否 | 最多 100 个组 ID |
+| `Filter.GroupId` | string | 否 | 单组筛选；不能与非空 `GroupIds` 同用 |
+| `Filter.Name` | string | 否 | 名称模糊匹配，最多 128 字符 |
+| `Filter.AssetType` | string | 否 | `Image`、`Video` 或 `Audio` |
+| `Filter.Statuses` | string[] | 否 | `Processing`、`Active`、`Failed`，多值取并集 |
+| `SortBy` | string | 否 | `CreateTime`、`UpdateTime`、`Name`、`GroupId` |
+| `SortOrder` | string | 否 | `Asc` 或 `Desc`；默认 `Desc` |
+| `MaxResults`、`NextToken` | integer、string | 否 | 翻页凭证方式 |
+| `PageNumber`、`PageSize` | integer | 否 | 页码方式，须成对提供 |
+| `ProjectName` | string | 否 | 缺省或 `default` |
+
+默认按创建时间倒序。不同筛选字段取交集，已删除的素材及其组内资源不可见。
+
+请求体：
+
+~~~json
+{
+  "Filter": {
+    "GroupIds": ["group-20261030120000-abcde"],
+    "Statuses": ["Active"]
+  },
+  "PageNumber": 1,
+  "PageSize": 10
+}
+~~~
+
+`Result`：
+
+~~~json
+{
+  "Items": [
+    {
+      "Id": "asset-20261030120100-abcde",
+      "Name": "产品正面",
+      "GroupId": "group-20261030120000-abcde",
+      "AssetType": "Image",
+      "Status": "Active",
+      "URL": "https://media.example.com/reference.png",
+      "CreateTime": "2026-10-30T04:01:00Z",
+      "UpdateTime": "2026-10-30T04:01:30Z"
+    }
+  ],
+  "TotalCount": 1,
+  "PageNumber": 1,
+  "PageSize": 10
+}
+~~~
+
+翻页凭证方式只返回 `Items` 和必要时的 `NextToken`。
+
+## GetAsset
+
+~~~http
+POST /doubao/api/ark/assets?Action=GetAsset
+~~~
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `Id` | string | 是 | 素材 ID，不带 `asset://` |
+| `ProjectName` | string | 否 | 缺省或 `default` |
+
+~~~bash
+curl --request POST \
+  "$BASE_URL/doubao/api/ark/assets?Action=GetAsset" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"Id":"asset-20261030120100-abcde"}'
+~~~
+
+`Result` 为列表中的素材对象。`Status` 为 `Processing`、`Active` 或 `Failed`。
+查询返回最近同步的状态；非 `Active` 状态的 `URL` 为空。时间为 UTC RFC 3339 字符串。
+
+HTTP 200 配合 `Status: "Failed"` 表示素材处理失败。可使用
+[REST 详情](../assets/query)读取可用的失败说明。URL 可能有时效，稳定引用应使用素材 ID。
+
+## UpdateAsset
+
+~~~http
+POST /doubao/api/ark/assets?Action=UpdateAsset
+~~~
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `Id` | string | 是 | 素材 ID |
+| `Name` | string | 是 | 非空新名称，最多 64 字符 |
+| `ProjectName` | string | 否 | 缺省或 `default` |
+
+仅修改名称，不修改文件、类型或所属组。
+
+~~~json
+{"Id":"asset-20261030120100-abcde","Name":"产品正面图"}
+~~~
+
+`Result`：
+
+~~~json
+{"Id": "asset-20261030120100-abcde"}
+~~~
+
+## DeleteAsset
+
+~~~http
+POST /doubao/api/ark/assets?Action=DeleteAsset
+~~~
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `Id` | string | 是 | 素材 ID |
+| `ProjectName` | string | 否 | 缺省或 `default` |
+
+~~~bash
+curl --request POST \
+  "$BASE_URL/doubao/api/ark/assets?Action=DeleteAsset" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"Id":"asset-20261030120100-abcde"}'
+~~~
+
+成功返回 HTTP 200，`Result` 为 `{}`。素材立即不可使用，后台继续清理存储。
+重复操作或资源不可见时返回 404。

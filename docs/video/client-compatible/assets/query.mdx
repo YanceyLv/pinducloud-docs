@@ -1,0 +1,87 @@
+---
+title: 查询素材
+---
+
+# 查询素材
+
+## 查询列表
+
+~~~http
+GET /doubao/api/assets/list
+~~~
+
+| 查询参数 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `group_id` | string | 不筛选 | 素材组 ID |
+| `asset_type` | string | 不筛选 | `Image`、`Video`、`Audio` |
+| `status` | string | 不筛选 | `Active`、`Processing`、`Failed` |
+| `name` | string | 不筛选 | 名称模糊匹配 |
+| `page` | integer | 1 | 从 1 开始 |
+| `page_size` | integer | 20 | 1–100；非法或越界值按 20 处理 |
+
+~~~bash
+curl --get "$BASE_URL/doubao/api/assets/list" \
+  --header "Authorization: Bearer $API_KEY" \
+  --data-urlencode "group_id=group-20261030120000-abcde" \
+  --data-urlencode "status=Active" \
+  --data-urlencode "page_size=20"
+~~~
+
+~~~json
+{
+  "data": [
+    {
+      "assetId": "asset-20261030120100-abcde",
+      "assetName": "产品正面",
+      "assetType": "Image",
+      "status": "ACTIVE",
+      "groupId": "group-20261030120000-abcde",
+      "createdTime": "2026-10-30 12:01:00",
+      "updatedTime": "2026-10-30 12:01:30"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "page_size": 20
+}
+~~~
+
+只返回当前账号的可见素材。已删除的素材和已删除组内的素材不在列表中。
+按不可见组筛选时返回空列表。
+
+## 查询详情
+
+~~~http
+GET /doubao/api/assets/{asset_id}
+~~~
+
+~~~bash
+curl "$BASE_URL/doubao/api/assets/asset-20261030120100-abcde" \
+  --header "Authorization: Bearer $API_KEY"
+~~~
+
+成功返回 `{"data":{...}}`，`data` 与列表中的素材对象相同。
+
+| 字段 | 说明 |
+| --- | --- |
+| `assetId` | 素材 ID |
+| `assetName` | 名称 |
+| `assetType` | `Image`、`Video` 或 `Audio` |
+| `status` | `PROCESSING`、`ACTIVE` 或 `FAILED` |
+| `groupId` | 所属组 |
+| `createdTime`、`updatedTime` | 东八区时间，格式 `yyyy-MM-dd HH:mm:ss` |
+| `errorMessage` | 失败时提供的说明 |
+
+`PROCESSING` 表示尚不能用于生成；`ACTIVE` 表示已可用。HTTP 200 配合 `FAILED`
+表示成功查询到失败素材，不表示素材可用。
+
+详情、更新、删除、下载、公开链接和优化路径也接受 `asset://<asset_id>` 形式的引用。
+构造路径时应正确进行 URL 编码；使用裸 `asset_id` 最直接。
+
+不存在、已删除或不可见的素材返回 HTTP 404：
+
+~~~json
+{"error": "asset resource not found"}
+~~~
+
+查询详情不返回下载文件。需要文件内容时使用[素材下载](./download)接口。

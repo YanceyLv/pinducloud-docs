@@ -1,0 +1,88 @@
+---
+title: 真人认证 Action
+---
+
+# 真人认证 Action
+
+创建会话后由素材本人打开认证链接，完成后查询结果。此流程不会直接上传人像文件。
+
+## CreateVisualValidateSession
+
+~~~http
+POST /doubao/api/ark/assets?Action=CreateVisualValidateSession
+~~~
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `CallbackURL` | string | 是 | 认证完成后的浏览器回跳地址；HTTP/HTTPS，最多 2048 字节 |
+| `ProjectName` | string | 否 | 会话项目名，最多 191 字符；查询时应保持一致 |
+| `model` | string | 否 | 当前 Key 可用的模型；缺省自动选择 |
+| `name` | string | 否 | 认证组名称，最多 64 字符 |
+| `description` | string | 否 | 组描述，最多 1024 字符 |
+| `tags` | string | 否 | 标签文本，最多 512 字符 |
+
+~~~bash
+curl --request POST \
+  "$BASE_URL/doubao/api/ark/assets?Action=CreateVisualValidateSession" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{
+    "CallbackURL":"https://app.example.com/verification/result",
+    "ProjectName":"default",
+    "model":"MODEL_ID"
+  }'
+~~~
+
+`Result`：
+
+~~~json
+{
+  "BytedToken": "VALIDATION_TOKEN",
+  "H5Link": "https://verify.example.com/session"
+}
+~~~
+
+请完整打开 `H5Link`，保留全部查询参数。本站会话等待期限为 30 分钟，
+链接本身也可能更早失效；失效后创建新会话。
+
+自定义回跳地址与素材上传无关。完成认证后仍需查询组 ID，并上传图片。
+
+## GetVisualValidateResult
+
+~~~http
+POST /doubao/api/ark/assets?Action=GetVisualValidateResult
+~~~
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `BytedToken` | string | 是 | 创建会话时返回的认证凭证 |
+| `ProjectName` | string | 否 | 与创建会话使用的项目名一致 |
+
+~~~bash
+curl --request POST \
+  "$BASE_URL/doubao/api/ark/assets?Action=GetVisualValidateResult" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"BytedToken":"VALIDATION_TOKEN","ProjectName":"default"}'
+~~~
+
+确认成功后返回 HTTP 200，`Result`：
+
+~~~json
+{"GroupId": "group-20261030120000-abcde"}
+~~~
+
+其他状态：
+
+| HTTP 状态 | 常见错误码 | 处理 |
+| --- | --- | --- |
+| 409 | `ValidationPending` | 认证或组尚待确认，按 `Retry-After` 重试查询 |
+| 503 | `ServiceUnavailable` | 临时查询失败，稍后重试 |
+| 400 | `ValidationExpired` | 会话已过期，重新创建 |
+| 400 | `ValidationFailed` | 认证失败 |
+| 400 | `ValidationCancelled` | 会话已取消，不能继续 |
+| 400 | `ValidationError` | 请求或项目名不匹配 |
+| 404 | `ValidationError` | 凭证无效或不属于当前账号 |
+
+错误采用 `ResponseMetadata.Error` 外形。收到组 ID 后，使用
+[本地文件上传](../assets/upload)的 `mode=real` 上传本人图片，再等待素材审核通过。

@@ -1,0 +1,160 @@
+---
+title: 素材组 Action
+---
+
+# 素材组 Action
+
+所有操作使用 `POST /doubao/api/ark/assets?Action=<操作名>`。
+公共鉴权、分页和错误格式见[接口约定](./overview)。
+
+## CreateAssetGroup
+
+~~~http
+POST /doubao/api/ark/assets?Action=CreateAssetGroup
+~~~
+
+创建普通素材组。
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `Name` | string | 是 | 1–64 字符 |
+| `Description` | string | 否 | 最多 256 字符 |
+| `GroupType` | string | 否 | 仅接受 `AIGC` |
+| `ProjectName` | string | 否 | 缺省或 `default` |
+| `model` | string | 否 | 指定可用模型；缺省时在 Key 权限内选择 |
+
+~~~bash
+curl --request POST \
+  "$BASE_URL/doubao/api/ark/assets?Action=CreateAssetGroup" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"Name":"产品参考","GroupType":"AIGC","model":"MODEL_ID"}'
+~~~
+
+`Result`：
+
+~~~json
+{"Id": "group-20261030120000-abcde"}
+~~~
+
+不能通过 `GroupType: "LivenessFace"` 直接创建真人组；需完成[认证流程](./verification)。
+
+## ListAssetGroups
+
+~~~http
+POST /doubao/api/ark/assets?Action=ListAssetGroups
+~~~
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `Filter.GroupType` | string | 否 | `AIGC` 或 `LivenessFace`；缺省不筛选 |
+| `Filter.GroupIds` | string[] | 否 | 最多 100 个组 ID |
+| `Filter.Name` | string | 否 | 名称模糊匹配，最多 128 字符 |
+| `SortBy` | string | 否 | `CreateTime`、`UpdateTime`、`Name`；默认 `CreateTime` |
+| `SortOrder` | string | 否 | `Asc` 或 `Desc`；默认 `Desc` |
+| `MaxResults`、`NextToken` | integer、string | 否 | 翻页凭证方式 |
+| `PageNumber`、`PageSize` | integer | 否 | 页码方式，须成对提供 |
+| `ProjectName` | string | 否 | 缺省或 `default` |
+
+请求体：
+
+~~~json
+{
+  "Filter": {"GroupType": "AIGC"},
+  "PageNumber": 1,
+  "PageSize": 10,
+  "SortBy": "CreateTime",
+  "SortOrder": "Desc"
+}
+~~~
+
+`Result`：
+
+~~~json
+{
+  "Items": [
+    {
+      "Id": "group-20261030120000-abcde",
+      "Name": "产品参考",
+      "Description": "",
+      "GroupType": "AIGC",
+      "Status": "Active",
+      "CreateTime": "2026-10-30T04:00:00Z",
+      "UpdateTime": "2026-10-30T04:00:00Z"
+    }
+  ],
+  "TotalCount": 1,
+  "PageNumber": 1,
+  "PageSize": 10
+}
+~~~
+
+使用翻页凭证方式时，不返回页码和总数；存在下一页时返回 `NextToken`。
+
+## GetAssetGroup
+
+~~~http
+POST /doubao/api/ark/assets?Action=GetAssetGroup
+~~~
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `Id` | string | 是 | 组 ID |
+| `ProjectName` | string | 否 | 缺省或 `default` |
+
+~~~bash
+curl --request POST \
+  "$BASE_URL/doubao/api/ark/assets?Action=GetAssetGroup" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"Id":"group-20261030120000-abcde"}'
+~~~
+
+`Result` 为列表中同样的素材组对象。资源不存在、已删除或不可见时返回 404。
+
+## UpdateAssetGroup
+
+~~~http
+POST /doubao/api/ark/assets?Action=UpdateAssetGroup
+~~~
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `Id` | string | 是 | 组 ID |
+| `Name` | string | 否 | 非空新名称，最多 64 字符 |
+| `Description` | string | 否 | 最多 256 字符；空字符串清空描述 |
+| `ProjectName` | string | 否 | 缺省或 `default` |
+
+`Name` 和 `Description` 至少提供一个。类型不可修改。
+
+~~~json
+{"Id":"group-20261030120000-abcde","Description":"整理完成"}
+~~~
+
+`Result`：
+
+~~~json
+{"Id": "group-20261030120000-abcde"}
+~~~
+
+## DeleteAssetGroup
+
+~~~http
+POST /doubao/api/ark/assets?Action=DeleteAssetGroup
+~~~
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `Id` | string | 是 | 组 ID |
+| `ProjectName` | string | 否 | 缺省或 `default` |
+
+~~~bash
+curl --request POST \
+  "$BASE_URL/doubao/api/ark/assets?Action=DeleteAssetGroup" \
+  --header "Authorization: Bearer $API_KEY" \
+  --header "Content-Type: application/json" \
+  --data '{"Id":"group-20261030120000-abcde"}'
+~~~
+
+成功返回 HTTP 200，`Result` 为 `{}`。组和组内素材立即不可访问，存储清理由后台执行。
+真人组同样可删除，操作不可撤销。
