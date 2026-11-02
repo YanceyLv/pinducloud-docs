@@ -13,7 +13,7 @@ sidebar_label: "03-参考生视频"
 
 | 模型 | 协议 | 参考素材字段 | 提示词引用语法 | 分辨率参数 | 音频 | 多镜头 |
 |:---|:---|:---|:---|:---|:---|:---|
-| `wan2.7-r2v`、`wan2.7-r2v-2026-06-12` | 新版 | `input.media`（对象数组，type + url） | 中文「图1 / 视频1」，英文「Image 1 / Video 1」，图与视频**分别计数** | `parameters.resolution`（`720P`/`1080P`） | 默认生成有声视频，无需设置；支持 `reference_voice` 音色参考 | 不支持 `shot_type`，在 prompt 中写分镜脚本实现 |
+| `wan2.7-r2v` | 新版 | `input.media`（对象数组，type + url） | 中文「图1 / 视频1」，英文「Image 1 / Video 1」，图与视频**分别计数** | `parameters.resolution`（`720P`/`1080P`） | 默认生成有声视频，无需设置；支持 `reference_voice` 音色参考 | 不支持 `shot_type`，在 prompt 中写分镜脚本实现 |
 | `wan2.6-r2v` | 旧版 | `input.reference_urls`（字符串数组） | `character1`、`character2`（图和视频按数组顺序**统一计数**） | `parameters.size`（宽\*高，如 `1280*720`） | 不支持 `audio` 参数（仅 flash 版支持） | `parameters.shot_type`（`single`/`multi`） |
 | `wan2.6-r2v-flash` | 旧版 | 同 `wan2.6-r2v` | 同上 | 同上 | 支持 `audio`（true 有声 / false 无声） | 同上 |
 
@@ -59,7 +59,7 @@ POST https://video.pinducloud.com.cn/ali/api/v1/services/aigc/video-generation/v
 
 | 参数 | 类型 | 必填 | 默认值 | 说明 |
 |:---|:---|:---:|:---|:---|
-| `model` | string | 是 |  | `wan2.7-r2v` 或 `wan2.7-r2v-2026-06-12` |
+| `model` | string | 是 |  | `wan2.7-r2v` |
 | `input.prompt` | string | 是 |  | 提示词，中英文，≤5000 字符（超出截断）<br />引用语法见上文「提示词引用语法」 |
 | `input.negative_prompt` | string | 否 |  | 反向提示词，≤500 字符 |
 | `input.media` | array of object | 是 |  | 参考素材数组。首帧图像最多 1 张；参考图像 + 参考视频至少 1 个且合计 ≤ 5；素材为主体角色时应仅含单一角色 |

@@ -57,28 +57,28 @@ first_frame、last_frame 与 reference_* 角色。
 
 ## 模型与分辨率
 
-接口识别以下模型名称；识别名称不表示当前 API Key 已开通该模型。可通过
+以下为模型名称示例；实际可调用名称以当前 API Key 可用模型列表为准。可通过
 `GET /v1/models` 查询可用列表。
 
 ~~~text
-doubao-seedance-1-0-pro-250528
+doubao-seedance-1-0-pro
 doubao-seedance-1-0-lite-t2v
 doubao-seedance-1-0-lite-i2v
-doubao-seedance-1-5-pro-251215
-doubao-seedance-2-0-260128
-doubao-seedance-2-0-fast-260128
-doubao-seedance-2-0-mini-260615
-doubao-seedance-2-5-260628
+doubao-seedance-1-5-pro
+doubao-seedance-2-0
+doubao-seedance-2-0-fast
+doubao-seedance-2-0-mini
+doubao-seedance-2-5
 ~~~
 
 各模型的输出分辨率限制如下：
 
 | 模型 | 可用分辨率 |
 | --- | --- |
-| doubao-seedance-2-0-fast-260128 | 480p、720p |
-| doubao-seedance-2-0-mini-260615 | 480p、720p |
-| doubao-seedance-2-0-260128 | 480p、720p、1080p、4k |
-| doubao-seedance-2-5-260628 | 480p、720p、1080p；不支持 4k |
+| doubao-seedance-2-0-fast | 480p、720p |
+| doubao-seedance-2-0-mini | 480p、720p |
+| doubao-seedance-2-0 | 480p、720p、1080p、4k |
+| doubao-seedance-2-5 | 480p、720p、1080p；不支持 4k |
 | 上述 1.0 和 1.5 模型 | 480p、720p、1080p |
 
 Fast 和 Mini 模型不能传 `1080p`、`4k` 或等价的高分辨率尺寸。未传 `resolution`
@@ -92,7 +92,7 @@ Fast 和 Mini 模型不能传 `1080p`、`4k` 或等价的高分辨率尺寸。�
 已知的模型限制。“本站当前拒绝”表示本站会在提交前返回 400；没有标注为模型限制
 的项目，不应推断其他 Seedance 版本也有相同限制。
 
-| 字段或能力 | 标准版 `doubao-seedance-2-0-260128` | Fast / Mini | 本站行为 |
+| 字段或能力 | 标准版 `doubao-seedance-2-0` | Fast / Mini | 本站行为 |
 | --- | --- | --- | --- |
 | `resolution` | `480p`、`720p`、`1080p`、`4k` | `480p`、`720p` | Fast/Mini 的高分辨率请求返回 400 |
 | `duration` | `-1` 或 4~15 的整数 | `-1` 或 4~15 的整数 | 其他值返回 400 |

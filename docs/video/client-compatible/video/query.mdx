@@ -22,7 +22,7 @@ curl "$BASE_URL/doubao/api/v3/contents/generations/tasks/cgt-20261030040000-abcd
 ~~~json
 {
   "id": "cgt-20261030040000-abcde",
-  "model": "doubao-seedance-2-0-260128",
+  "model": "doubao-seedance-2-0",
   "status": "succeeded",
   "content": {"video_url": "https://media.example.com/result.mp4"},
   "usage": {"completion_tokens": 24000, "total_tokens": 24000},
@@ -115,7 +115,7 @@ curl --get "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
   "items": [
     {
       "id": "cgt-20261030040000-abcde",
-      "model": "doubao-seedance-2-0-260128",
+      "model": "doubao-seedance-2-0",
       "status": "succeeded",
       "content": {"video_url": "https://media.example.com/result.mp4"},
       "usage": {"completion_tokens": 24000, "total_tokens": 24000},

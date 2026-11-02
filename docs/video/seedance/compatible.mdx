@@ -29,7 +29,7 @@ curl --request POST "$BASE_URL/v1/videos" \
   --header "Authorization: Bearer $API_KEY" \
   --header "Content-Type: application/json" \
   --data '{
-    "model": "doubao-seedance-2-0-fast-260128",
+    "model": "doubao-seedance-2-0-fast",
     "prompt": "一只纸飞机飞过晴朗天空",
     "seconds": 4,
     "size": "480p",
@@ -69,7 +69,7 @@ curl "$BASE_URL/v1/videos/task_gateway_doubao_01" \
 {
   "id": "task_gateway_doubao_01",
   "object": "video",
-  "model": "doubao-seedance-2-0-fast-260128",
+  "model": "doubao-seedance-2-0-fast",
   "status": "completed",
   "progress": 100,
   "created_at": 1790668800,
@@ -100,7 +100,7 @@ curl --request POST "$BASE_URL/v1/responses" \
   --header "Authorization: Bearer $API_KEY" \
   --header "Content-Type: application/json" \
   --data '{
-    "model": "doubao-seedance-2-0-fast-260128",
+    "model": "doubao-seedance-2-0-fast",
     "input": "一只纸飞机飞过晴朗天空",
     "background": true,
     "seconds": 4,

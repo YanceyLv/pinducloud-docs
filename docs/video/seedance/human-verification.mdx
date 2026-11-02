@@ -53,7 +53,7 @@ curl --request POST "$BASE_URL/v1/seedance/validation-sessions" \
     "name": "我的真人素材",
     "description": "已授权的人像参考",
     "tags": "人像,已授权",
-    "model": "doubao-seedance-2-0-fast-260128"
+    "model": "doubao-seedance-2-0-fast"
   }'
 ~~~
 
@@ -166,7 +166,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
   --header "Authorization: Bearer $API_KEY" \
   --header "Content-Type: application/json" \
   --data '{
-    "model": "doubao-seedance-2-0-fast-260128",
+    "model": "doubao-seedance-2-0-fast",
     "content": [
       {"type": "text", "text": "让参考人物自然微笑并轻轻点头"},
       {"type": "image_url", "role": "reference_image", "image_url": {"url": "asset://asset-portrait-example"}}
@@ -196,7 +196,7 @@ curl --request POST \
   --data '{
     "CallbackURL": "https://app.example.com/verification/return",
     "name": "我的真人素材",
-    "model": "doubao-seedance-2-0-fast-260128"
+    "model": "doubao-seedance-2-0-fast"
   }'
 ~~~
 

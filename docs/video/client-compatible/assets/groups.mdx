@@ -34,7 +34,7 @@ curl --get "$BASE_URL/doubao/api/assets/groups" \
       "name": "产品参考",
       "description": "",
       "group_type": "AIGC",
-      "bind_model": "doubao-seedance-2-0-260128",
+      "bind_model": "doubao-seedance-2-0",
       "asset_count": 1,
       "status": 1,
       "create_time": "2026-10-30T12:00:00+08:00",
@@ -68,7 +68,7 @@ POST /doubao/api/assets/groups
 curl --request POST "$BASE_URL/doubao/api/assets/groups" \
   --header "Authorization: Bearer $API_KEY" \
   --header "Content-Type: application/json" \
-  --data '{"name":"产品参考","bind_model":"doubao-seedance-2-0-260128","type":"AIGC"}'
+  --data '{"name":"产品参考","bind_model":"doubao-seedance-2-0","type":"AIGC"}'
 ~~~
 
 成功返回 HTTP 200：
@@ -80,7 +80,7 @@ curl --request POST "$BASE_URL/doubao/api/assets/groups" \
     "name": "产品参考",
     "description": "",
     "group_type": "AIGC",
-    "bind_model": "doubao-seedance-2-0-260128",
+    "bind_model": "doubao-seedance-2-0",
     "asset_count": 0,
     "status": 1,
     "create_time": "2026-10-30T12:00:00+08:00",

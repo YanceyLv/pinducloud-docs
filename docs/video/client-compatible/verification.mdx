@@ -23,7 +23,7 @@ POST /doubao/api/assets/liveness/session
 curl --request POST "$BASE_URL/doubao/api/assets/liveness/session" \
   --header "Authorization: Bearer $API_KEY" \
   --header "Content-Type: application/json" \
-  --data '{"model":"doubao-seedance-2-0-260128"}'
+  --data '{"model":"doubao-seedance-2-0"}'
 ~~~
 
 ~~~json
@@ -33,7 +33,7 @@ curl --request POST "$BASE_URL/doubao/api/assets/liveness/session" \
     "byted_token": "VALIDATION_TOKEN",
     "h5_link": "https://verify.example.com/session",
     "history_id": 123,
-    "suggest_model": "doubao-seedance-2-0-260128",
+    "suggest_model": "doubao-seedance-2-0",
     "liveness_group": "real"
   }
 }

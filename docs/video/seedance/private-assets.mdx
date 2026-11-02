@@ -195,7 +195,7 @@ curl --get "$BASE_URL/v1/seedance/asset-groups" \
 同名素材组，名称比较不区分大小写。
 
 通过 API Key 创建时还必须提供 `model`（最多 191 个字符），例如
-`doubao-seedance-2-0-fast-260128`。模型必须在该 Key 允许访问的范围内；
+`doubao-seedance-2-0-fast`。模型必须在该 Key 允许访问的范围内；
 模型未开放或暂时无可用服务时，创建失败。可用模型通过 `GET /v1/models` 查询。
 
 `model` 用于选择建组所需的模型服务，不是素材的独占模型标签。其他模型能否引用
@@ -209,7 +209,7 @@ curl --get "$BASE_URL/v1/seedance/asset-groups" \
 curl --request POST "$BASE_URL/v1/seedance/asset-groups" \
   --header "Authorization: Bearer $API_KEY" \
   --header "Content-Type: application/json" \
-  --data '{"name":"product-assets","model":"doubao-seedance-2-0-fast-260128"}'
+  --data '{"name":"product-assets","model":"doubao-seedance-2-0-fast"}'
 ~~~
 
 创建成功后保存返回的 `id` 和 `group_id`。后续请求使用 `group_id` 选择该组，

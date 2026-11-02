@@ -19,7 +19,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
   --header "Authorization: Bearer $API_KEY" \
   --header "Content-Type: application/json" \
   --data '{
-    "model": "doubao-seedance-2-0-260128",
+    "model": "doubao-seedance-2-0",
     "content": [
       {"type": "text", "text": "一只纸飞机穿过城市上空，镜头跟随它飞过屋顶"}
     ],
@@ -161,7 +161,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
   --header "Authorization: Bearer $API_KEY" \
   --header "Content-Type: application/json" \
   --data '{
-    "model": "doubao-seedance-2-0-fast-260128",
+    "model": "doubao-seedance-2-0-fast",
     "content": [
       {"type": "text", "text": "镜头缓慢推近，湖面出现自然的涟漪"},
       {
@@ -183,7 +183,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
   --header "Authorization: Bearer $API_KEY" \
   --header "Content-Type: application/json" \
   --data '{
-    "model": "doubao-seedance-2-0-260128",
+    "model": "doubao-seedance-2-0",
     "content": [
       {"type": "text", "text": "让天空从深蓝自然过渡到日出后的橙红色"},
       {
@@ -210,7 +210,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 
 ~~~json
 {
-  "model": "doubao-seedance-2-0-260128",
+  "model": "doubao-seedance-2-0",
   "content": [
     {"type": "text", "text": "参考图片 1 的角色在参考视频 1 的动作基础上说话"},
     {"type": "image_url", "role": "reference_image", "image_url": {"url": "https://cdn.example.com/character.png"}},
@@ -235,7 +235,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 
 ~~~json
 {
-  "model": "doubao-seedance-1-5-pro-251215",
+  "model": "doubao-seedance-1-5-pro",
   "content": [
     {"type": "draft_task", "draft_task": {"id": "task_gateway_draft_01"}}
   ],

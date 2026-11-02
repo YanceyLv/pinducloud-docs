@@ -30,7 +30,7 @@ curl --get "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
   --header "Authorization: Bearer $API_KEY" \
   --data-urlencode "page_num=1" \
   --data-urlencode "page_size=20" \
-  --data-urlencode "filter.model=doubao-seedance-2-0-fast-260128" \
+  --data-urlencode "filter.model=doubao-seedance-2-0-fast" \
   --data-urlencode "filter.status=succeeded" \
   --data-urlencode "filter.service_tier=default"
 ~~~
@@ -68,7 +68,7 @@ curl --get "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
   "items": [
     {
       "id": "task_gateway_doubao_01",
-      "model": "doubao-seedance-2-0-fast-260128",
+      "model": "doubao-seedance-2-0-fast",
       "status": "succeeded",
       "resolution": "720p",
       "duration": 5,
@@ -82,7 +82,7 @@ curl --get "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
     },
     {
       "id": "task_gateway_doubao_02",
-      "model": "doubao-seedance-2-0-fast-260128",
+      "model": "doubao-seedance-2-0-fast",
       "status": "running"
     }
   ],
