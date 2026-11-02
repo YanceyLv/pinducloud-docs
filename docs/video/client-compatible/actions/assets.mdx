@@ -19,7 +19,7 @@ POST /doubao/api/ark/assets?Action=CreateAsset
 | --- | --- | --- | --- |
 | `GroupId` | string | 是 | 当前账号的素材组 |
 | `URL` | string | 是 | 公网 HTTP/HTTPS 地址，最多 2048 字节 |
-| `AssetType` | string | 是 | `Image`、`Video` 或 `Audio` |
+| `AssetType` | string | 否 | `Image`、`Video` 或 `Audio`；缺省时根据 URL 识别 |
 | `Name` | string | 否 | 提供时须非空，最多 64 字符 |
 | `ProjectName` | string | 否 | 缺省或 `default` |
 
@@ -43,6 +43,7 @@ curl --request POST \
 ~~~
 
 HTTP 200 表示已登记，素材通常仍在处理。查询至 `Active` 后才能用于视频。
+未提供 `AssetType` 且无法识别媒体类型时，请求会返回错误。
 本接口不接收 Base64 或本地文件；文件使用 [REST 上传](../assets/upload)。
 
 ## ListAssets
@@ -87,18 +88,19 @@ POST /doubao/api/ark/assets?Action=ListAssets
   "Items": [
     {
       "Id": "asset-20261030120100-abcde",
-      "Name": "产品正面",
       "GroupId": "group-20261030120000-abcde",
-      "AssetType": "Image",
-      "Status": "Active",
       "URL": "https://media.example.com/reference.png",
+      "AssetType": "Image",
+      "Name": "产品正面",
+      "Status": "Active",
+      "ProjectName": "default",
       "CreateTime": "2026-10-30T04:01:00Z",
       "UpdateTime": "2026-10-30T04:01:30Z"
     }
   ],
-  "TotalCount": 1,
   "PageNumber": 1,
-  "PageSize": 10
+  "PageSize": 10,
+  "TotalCount": 1
 }
 ~~~
 
@@ -123,7 +125,23 @@ curl --request POST \
   --data '{"Id":"asset-20261030120100-abcde"}'
 ~~~
 
-`Result` 为列表中的素材对象。`Status` 为 `Processing`、`Active` 或 `Failed`。
+`Result` 为列表中的素材对象：
+
+~~~json
+{
+  "Id": "asset-20261030120100-abcde",
+  "GroupId": "group-20261030120000-abcde",
+  "URL": "https://media.example.com/reference.png",
+  "AssetType": "Image",
+  "Name": "产品正面",
+  "Status": "Active",
+  "ProjectName": "default",
+  "CreateTime": "2026-10-30T04:01:00Z",
+  "UpdateTime": "2026-10-30T04:01:30Z"
+}
+~~~
+
+`Status` 为 `Processing`、`Active` 或 `Failed`。
 查询返回最近同步的状态；非 `Active` 状态的 `URL` 为空。时间为 UTC RFC 3339 字符串。
 
 HTTP 200 配合 `Status: "Failed"` 表示素材处理失败。可使用

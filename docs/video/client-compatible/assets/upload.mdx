@@ -48,7 +48,7 @@ Content-Type: multipart/form-data
 | `name` | string | 否 | 最多 64 字符；缺省使用文件名 |
 | `mode` | string | 否 | `link`、`library` 或 `real` |
 
-支持 `png`、`jpg`、`jpeg`、`webp`、`gif`、`bmp`，单文件最多 50 MiB。
+支持 `png`、`jpg`、`jpeg`、`webp`、`gif`、`bmp`。单文件默认最多 50 MiB，实际上限以站点配置为准。
 文件须可解码，宽高均不得超过 6000 像素。入库模式还需通过素材审核。
 
 | 模式 | 行为 |
@@ -83,9 +83,9 @@ curl --request POST "$BASE_URL/doubao/api/assets/upload" \
     "assetName": "产品正面",
     "assetType": "Image",
     "status": "PROCESSING",
-    "groupId": "group-20261030120000-abcde",
     "createdTime": "2026-10-30 12:01:00",
-    "updatedTime": "2026-10-30 12:01:00"
+    "updatedTime": "2026-10-30 12:01:00",
+    "groupId": "group-20261030120000-abcde"
   }
 }
 ~~~

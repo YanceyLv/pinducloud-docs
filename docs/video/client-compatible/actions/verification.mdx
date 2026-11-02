@@ -29,7 +29,7 @@ curl --request POST \
   --data '{
     "CallbackURL":"https://app.example.com/verification/result",
     "ProjectName":"default",
-    "model":"MODEL_ID"
+    "model":"doubao-seedance-2-0-260128"
   }'
 ~~~
 
@@ -38,7 +38,8 @@ curl --request POST \
 ~~~json
 {
   "BytedToken": "VALIDATION_TOKEN",
-  "H5Link": "https://verify.example.com/session"
+  "H5Link": "https://verify.example.com/session",
+  "CallbackURL": "https://app.example.com/verification/result"
 }
 ~~~
 

@@ -8,8 +8,8 @@ title: 创建视频任务
 POST /doubao/api/v3/contents/generations/tasks
 ~~~
 
-等价路径为 `/doubao/contents/generations/tasks` 和
-`/doubao/v1/contents/generations/tasks`。三条路径均支持 Bearer 与 AK/SK。
+`/doubao/contents/generations/tasks` 和 `/doubao/v1/contents/generations/tasks`
+也支持创建任务。三条路径均支持 Bearer 与 AK/SK，返回相同格式的任务 ID。
 
 ## 请求示例
 
@@ -18,7 +18,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
   --header "Authorization: Bearer $API_KEY" \
   --header "Content-Type: application/json" \
   --data '{
-    "model": "MODEL_ID",
+    "model": "doubao-seedance-2-0-260128",
     "prompt": "清晨的湖面泛起轻微涟漪，镜头缓慢前移",
     "duration": 4,
     "resolution": "480p",
@@ -65,7 +65,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 
 ~~~json
 {
-  "model": "MODEL_ID",
+  "model": "doubao-seedance-2-0-260128",
   "prompt": "湖面轻微起伏",
   "duration": 5,
   "parameters": {
@@ -93,13 +93,13 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 
 ~~~json
 {
-  "model": "MODEL_ID",
+  "model": "doubao-seedance-2-0-260128",
   "content": [
     {"type": "text", "text": "保持主体一致，镜头缓慢前移"},
     {
       "type": "image_url",
       "role": "reference_image",
-      "image_url": {"url": "asset://asset-20261030120000-abcde"}
+      "image_url": {"url": "asset://asset-20261030120100-abcde"}
     }
   ],
   "duration": 4,
@@ -107,8 +107,9 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 }
 ~~~
 
-当前入口的音频参考须同时包含图片或视频。2.0 系列最多接受 9 张参考图、3 段参考视频、
-3 段参考音频；2.5 的结构上限分别为 30、10、10。文件规格和内容仍需通过模型审核。
+2.0 系列的参考音频须同时搭配图片或视频；2.5 支持单独提供参考音频。
+2.0 系列最多接受 9 张参考图、3 段参考视频、3 段参考音频；2.5 的结构上限分别为 30、10、10。
+文件规格和内容仍需通过模型审核。
 
 `draft_task` 必须是内容数组中唯一的一项，引用当前用户可访问的任务。
 样片模式要求 `480p`，不能与 `return_last_frame: true` 或 `service_tier: "flex"` 同用。
@@ -117,11 +118,15 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 
 ## 响应
 
+成功创建任务时返回：
+
 ~~~json
-{"id": "task_example"}
+{"id": "cgt-20261030040000-abcde"}
 ~~~
 
-保存 `id`，通过[查询接口](./query)获取状态和结果。成功受理会产生预扣，完成后按实际结算规则调整。
+`cgt-` 后的时间为 14 位 UTC 时间，后缀为 5 位小写字母或数字。
+保存实际返回的完整 `id`，通过[查询接口](./query)获取状态和结果。
+成功受理会产生预扣，完成后按实际结算规则调整。
 创建超时不等于创建失败，不能直接认定没有扣费或任务不存在。
 
 ## 回调
@@ -135,7 +140,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 参数错误通常返回 HTTP 400：
 
 ~~~json
-{"error": {"code": "invalid_request", "message": "请求参数不合法"}}
+{"error": {"code": "invalid_request", "message": "Invalid request"}}
 ~~~
 
 具体 `code` 和 `message` 以实际响应为准。

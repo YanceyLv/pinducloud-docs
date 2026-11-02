@@ -22,7 +22,7 @@ GET /doubao/api/assets/tree
       "name": "产品参考",
       "description": "",
       "group_type": "AIGC",
-      "bind_model": "MODEL_ID",
+      "bind_model": "doubao-seedance-2-0-260128",
       "asset_count": 1,
       "status": 1,
       "create_time": "2026-10-30T12:00:00+08:00",
@@ -33,7 +33,6 @@ GET /doubao/api/assets/tree
           "assetName": "产品正面",
           "assetType": "Image",
           "status": "ACTIVE",
-          "groupId": "group-20261030120000-abcde",
           "createdTime": "2026-10-30 12:01:00",
           "updatedTime": "2026-10-30 12:01:30"
         }
@@ -43,7 +42,8 @@ GET /doubao/api/assets/tree
 }
 ~~~
 
-空组的 `assets` 为空数组。仅包含有组归属的可见素材，已删除记录不返回。
+空组的 `assets` 为空数组。素材归属由外层组对象的 `group_id` 表示。
+仅包含有组归属的可见素材，已删除记录不返回。
 大量素材应优先使用分页列表。
 
 ## 数量汇总
@@ -55,7 +55,7 @@ GET /doubao/api/assets/summary
 无查询参数。
 
 ~~~json
-{"data": {"group_count": 3, "asset_count": 12}}
+{"data": {"group_count": 1, "asset_count": 1}}
 ~~~
 
 `group_count` 为可见组数，`asset_count` 为可见素材数，包括尚在处理和审核失败的素材。
@@ -78,9 +78,9 @@ GET /doubao/api/assets/client-list
       "clientKey": "sk****ab",
       "clientName": "业务调用",
       "displayKey": "sk****ab",
-      "groupCount": 3,
-      "assetCount": 12,
-      "activeCount": 10,
+      "groupCount": 1,
+      "assetCount": 1,
+      "activeCount": 1,
       "channelCount": 1
     }
   ],

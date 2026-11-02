@@ -13,9 +13,11 @@ DELETE /doubao/api/v3/contents/generations/tasks/{task_id}
 
 ~~~bash
 curl --request DELETE \
-  "$BASE_URL/doubao/api/v3/contents/generations/tasks/task_example" \
+  "$BASE_URL/doubao/api/v3/contents/generations/tasks/cgt-20261030040000-abcde" \
   --header "Authorization: Bearer $API_KEY"
 ~~~
+
+将创建响应中的任务 ID 完整用于删除请求。
 
 服务先核对任务状态，再执行操作。任务必须属于当前用户，原任务使用的服务仍须可用。
 
@@ -35,13 +37,17 @@ curl --request DELETE \
 取消可能需要等待服务确认，客户端应允许约 90 秒的请求等待时间。
 响应不明确时先查询任务；只对确认需要重试的删除操作重试，不重新创建视频。
 
-| 状态或错误码 | 说明 |
+| HTTP 状态 | 说明 |
 | --- | --- |
+| 400 | 请求无效或任务关联的服务不可用 |
 | 404 | 任务不存在、不可见或已删除 |
-| `task_channel_unavailable`、`task_channel_disabled` | 原任务服务不可用 |
-| `task_action_not_supported` | 当前任务服务不支持此操作 |
-| `task_cancel_pending` | 操作结果或取消结算尚待确认 |
-| `task_delete_pending` | 删除状态同步未完成，可重试删除 |
-| `task_settlement_unavailable` | 最终用量尚待核对，不能据此认定已退款 |
+| 501 | 当前任务服务不支持此操作 |
+| 502、503 | 操作结果、取消确认或结算暂时无法确认 |
 
-错误响应通常为 `{"error":{"code":"...","message":"..."}}`，HTTP 状态及错误码以实际响应为准。
+例如，任务关联的服务不可用时可能返回：
+
+~~~json
+{"error": {"code": "invalid_request", "message": "Task channel is unavailable"}}
+~~~
+
+错误码和消息以实际响应为准；无法确认取消或最终用量时，不应认定已退款。

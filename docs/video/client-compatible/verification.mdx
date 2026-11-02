@@ -23,7 +23,7 @@ POST /doubao/api/assets/liveness/session
 curl --request POST "$BASE_URL/doubao/api/assets/liveness/session" \
   --header "Authorization: Bearer $API_KEY" \
   --header "Content-Type: application/json" \
-  --data '{"model":"MODEL_ID"}'
+  --data '{"model":"doubao-seedance-2-0-260128"}'
 ~~~
 
 ~~~json
@@ -33,7 +33,7 @@ curl --request POST "$BASE_URL/doubao/api/assets/liveness/session" \
     "byted_token": "VALIDATION_TOKEN",
     "h5_link": "https://verify.example.com/session",
     "history_id": 123,
-    "suggest_model": "MODEL_ID",
+    "suggest_model": "doubao-seedance-2-0-260128",
     "liveness_group": "real"
   }
 }
@@ -44,7 +44,7 @@ curl --request POST "$BASE_URL/doubao/api/assets/liveness/session" \
 | `byted_token` | 本次认证凭证，用于 Action 结果查询 |
 | `h5_link` | 本人认证页面；应完整打开，不删改查询参数 |
 | `history_id` | 本站认证记录编号 |
-| `suggest_model` | 请求中指定的模型，未指定时可能为空 |
+| `suggest_model` | 请求中指定的模型，或未指定时自动选择的模型 |
 | `liveness_group` | 固定为 `real` |
 
 认证链接有时效；失效后需重新创建会话。不要复用已消费的认证链接或公开认证凭证。
@@ -115,7 +115,7 @@ GET /doubao/api/assets/liveness/callback
 自定义回跳可能同时包含 `session_id`、`status` 和成功后的 `GroupId`。
 不要仅凭浏览器 URL 中的 `resultCode` 判断素材组已经可用。
 
-认证仍待确认时可能返回 503；会话校验失败返回 404。
+认证仍待确认时显示等待页面；认证结果暂不可用时可能返回 502，会话校验失败返回 404。
 
 ## 上传真人图片
 

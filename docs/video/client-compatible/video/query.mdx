@@ -13,21 +13,36 @@ GET /doubao/api/v3/contents/generations/tasks/{task_id}
 使用创建响应中的 `id`。同一用户的有效 Key 可查询该用户的可见任务。
 
 ~~~bash
-curl "$BASE_URL/doubao/api/v3/contents/generations/tasks/task_example" \
+curl "$BASE_URL/doubao/api/v3/contents/generations/tasks/cgt-20261030040000-abcde" \
   --header "Authorization: Bearer $API_KEY"
 ~~~
 
+返回示例：
+
 ~~~json
 {
-  "id": "task_example",
-  "model": "MODEL_ID",
+  "id": "cgt-20261030040000-abcde",
+  "model": "doubao-seedance-2-0-260128",
   "status": "succeeded",
-  "created_at": 1793318400,
-  "updated_at": 1793318460,
   "content": {"video_url": "https://media.example.com/result.mp4"},
-  "usage": {"completion_tokens": 24000, "total_tokens": 24000}
+  "usage": {"completion_tokens": 24000, "total_tokens": 24000},
+  "created_at": 1793332800,
+  "updated_at": 1793332860,
+  "resolution": "480p",
+  "ratio": "16:9",
+  "duration": 4,
+  "generate_audio": false
 }
 ~~~
+
+同一任务也可通过其他兼容路径查询，例如：
+
+~~~bash
+curl "$BASE_URL/doubao/contents/generations/tasks/cgt-20261030040000-abcde" \
+  --header "Authorization: Bearer $API_KEY"
+~~~
+
+查询返回的 `id` 与创建时一致，其他字段以实际响应为准。
 
 | 字段 | 说明 |
 | --- | --- |
@@ -39,8 +54,16 @@ curl "$BASE_URL/doubao/api/v3/contents/generations/tasks/task_example" \
 | `created_at`、`updated_at` | Unix 秒时间戳 |
 | `usage` | 服务实际返回的用量 |
 | `error` | 失败原因，可能含 `code`、`message` |
+| `seed` | 生成使用的随机种子 |
+| `resolution`、`ratio` | 分辨率和画面比例 |
+| `duration`、`frames`、`framespersecond` | 时长（秒）、帧数和帧率 |
+| `service_tier` | 服务等级 |
+| `execution_expires_after` | 任务过期阈值，单位秒 |
+| `generate_audio`、`draft` | 音频生成和样片标记 |
+| `draft_task_id`、`priority` | 关联样片任务标识和优先级 |
 
-时长、分辨率、服务等级、样片标记等可选字段以实际响应为准，客户端应允许字段缺省。
+时长、分辨率、服务等级、样片标记等可选字段以实际响应为准，
+未返回的字段不会补默认值；客户端应允许字段缺省。实际响应也可能包含其他字段。
 媒体地址可能失效，应及时下载或保存。
 
 | 状态 | 含义 |
@@ -71,7 +94,7 @@ GET /doubao/api/v3/contents/generations/tasks
 | `page_num` | integer | 1 | 1–500 |
 | `page_size` | integer | 20 | 1–500 |
 | `filter.model` | string | 不筛选 | 公开模型名称，最多 191 字符 |
-| `filter.status` | string | 不筛选 | `queued`、`running`、`succeeded`、`failed`、`cancelled` |
+| `filter.status` | string | 不筛选 | `queued`、`running`、`succeeded`、`failed`、`cancelled`、`expired` |
 | `filter.service_tier` | string | `default` | `default` 或 `flex` |
 | `filter.task_ids` | string | 不筛选 | 可重复，最多 100 个 ID，每个最多 191 字符 |
 
@@ -83,17 +106,24 @@ curl --get "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
   --data-urlencode "page_num=1" \
   --data-urlencode "page_size=20" \
   --data-urlencode "filter.status=succeeded" \
-  --data-urlencode "filter.task_ids=task_example"
+  --data-urlencode "filter.task_ids=cgt-20261030040000-abcde"
 ~~~
 
 ~~~json
 {
   "items": [
     {
-      "id": "task_example",
-      "model": "MODEL_ID",
+      "id": "cgt-20261030040000-abcde",
+      "model": "doubao-seedance-2-0-260128",
       "status": "succeeded",
-      "content": {"video_url": "https://media.example.com/result.mp4"}
+      "content": {"video_url": "https://media.example.com/result.mp4"},
+      "usage": {"completion_tokens": 24000, "total_tokens": 24000},
+      "created_at": 1793332800,
+      "updated_at": 1793332860,
+      "resolution": "480p",
+      "ratio": "16:9",
+      "duration": 4,
+      "generate_audio": false
     }
   ],
   "total": 1

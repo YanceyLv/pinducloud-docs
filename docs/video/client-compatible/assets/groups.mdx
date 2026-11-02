@@ -32,10 +32,10 @@ curl --get "$BASE_URL/doubao/api/assets/groups" \
     {
       "group_id": "group-20261030120000-abcde",
       "name": "产品参考",
-      "description": "产品图片",
+      "description": "",
       "group_type": "AIGC",
-      "bind_model": "MODEL_ID",
-      "asset_count": 2,
+      "bind_model": "doubao-seedance-2-0-260128",
+      "asset_count": 1,
       "status": 1,
       "create_time": "2026-10-30T12:00:00+08:00",
       "update_time": "2026-10-30T12:00:00+08:00"
@@ -68,10 +68,28 @@ POST /doubao/api/assets/groups
 curl --request POST "$BASE_URL/doubao/api/assets/groups" \
   --header "Authorization: Bearer $API_KEY" \
   --header "Content-Type: application/json" \
-  --data '{"name":"产品参考","bind_model":"MODEL_ID","type":"AIGC"}'
+  --data '{"name":"产品参考","bind_model":"doubao-seedance-2-0-260128","type":"AIGC"}'
 ~~~
 
-成功返回 HTTP 200，`data` 为上面的素材组对象。创建时素材数量为 0。
+成功返回 HTTP 200：
+
+~~~json
+{
+  "data": {
+    "group_id": "group-20261030120000-abcde",
+    "name": "产品参考",
+    "description": "",
+    "group_type": "AIGC",
+    "bind_model": "doubao-seedance-2-0-260128",
+    "asset_count": 0,
+    "status": 1,
+    "create_time": "2026-10-30T12:00:00+08:00",
+    "update_time": "2026-10-30T12:00:00+08:00"
+  }
+}
+~~~
+
+创建时素材数量为 0。
 模型不在 Key 的可用范围内，或没有可用素材服务时，会返回错误。
 
 真人素材组必须通过[真人认证](../verification)创建，不能把 `type` 设置为真人类型来跳过认证。

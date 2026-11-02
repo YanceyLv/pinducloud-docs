@@ -18,7 +18,7 @@ curl "$BASE_URL/doubao/api/assets/asset-20261030120100-abcde/download" \
   --output reference.bin
 ~~~
 
-响应包含素材类型对应的 `Content-Type` 和下载文件名。
+响应可包含来源的 `Content-Type` 和带素材名称的 `Content-Disposition`。
 不存在、已删除或暂无可下载内容时返回 404；读取失败时可能返回 502。
 
 ## 签发公开链接
@@ -36,7 +36,7 @@ curl "$BASE_URL/doubao/api/assets/asset-20261030120100-abcde/public-url" \
 {
   "success": true,
   "data": {
-    "url": "https://video.example.com/doubao/api/a/asset-20261030120100-abcde?e=1793325600&s=EXAMPLE_SIGNATURE",
+    "url": "https://video.example.com/doubao/api/a/asset-20261030120100-abcde?e=1793340060&s=0123456789abcdef0123456789abcdef",
     "expires_in": 7200
   }
 }
@@ -63,7 +63,8 @@ curl "$PUBLIC_URL" --output reference.bin
 ~~~
 
 成功时返回二进制流。签名无效、过期、资源已删除或不可见时返回 HTTP 404。
-签发服务不可用时，签发接口返回 503。单次下载内容上限为 200 MiB。
+签发服务不可用时，签发接口返回 503。下载大小限制取决于素材类型、站点配置和已记录的文件大小；
+超过限制时返回 413。
 
 旧格式 `GET /doubao/api/assets/public/{asset_id}?e=...&access=...`
 继续验证已签发链接，仍受原过期时间约束。新的签发请求返回 `/doubao/api/a/...`。

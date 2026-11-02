@@ -46,7 +46,8 @@ curl --request POST "$BASE_URL/api/token/aksk" \
 }
 ~~~
 
-`secret_key` 仅在此次响应返回。再次签发会立即使该 Key 的旧 AK/SK 失效。
+`access_key` 以 `AK` 开头，后接 32 位小写十六进制字符。`secret_key` 仅在此次响应返回。
+再次签发会立即使该 Key 的旧 AK/SK 失效。
 
 ## 查询凭据状态
 

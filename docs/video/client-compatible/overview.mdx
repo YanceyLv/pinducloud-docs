@@ -15,7 +15,9 @@ export BASE_URL="https://video.example.com"
 export API_KEY="YOUR_API_KEY"
 ~~~
 
-请替换为实际服务地址和自己的 API Key。`MODEL_ID` 表示当前 Key 可用的模型名称。
+请替换为实际服务地址和自己的 API Key。示例模型名称为 `doubao-seedance-2-0-260128`，
+实际调用时请使用当前 Key 可用的模型。示例中的任务 ID、素材 ID 和 URL 不能直接用于实际请求，
+请使用接口实际返回的值。
 
 如果客户端自行拼接 `/api/v3/...`、`/api/assets/...` 等路径，可将客户端基础地址设为
 `https://video.example.com/doubao`。生成签名时必须使用最终请求地址。
