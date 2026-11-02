@@ -34,8 +34,9 @@ Content-Type: application/json
 | [真人认证](./verification) | `CreateVisualValidateSession`、`GetVisualValidateResult` |
 
 素材组和素材操作的 `ProjectName` 仅支持缺省或 `default`。
-请求字段区分大小写，未知字段、错误类型和显式 `null` 会被拒绝。
-素材管理 Action 的 JSON 正文上限为 64 KiB；文件上传使用 [REST 上传接口](../assets/upload)。
+这些素材管理 Action 的请求字段区分大小写，未知字段、错误类型和显式 `null` 会被拒绝；
+JSON 正文上限为 64 KiB。真人认证的参数约定见[认证 Action](./verification)。
+文件上传使用 [REST 上传接口](../assets/upload)。
 
 ## 分页
 
@@ -48,7 +49,7 @@ Content-Type: application/json
 
 未提供分页字段时，使用翻页凭证方式，每页 10 项。
 `MaxResults` 和 `PageSize` 最大为 100；大于 100 按 100，小于等于 0 按 10。
-页码从 1 开始，最大为 21474836。超出数据末页时返回空数组。
+`PageNumber` 小于 1 时按 1 处理，最大为 21474836。超出数据末页时返回空数组。
 
 下一页使用响应中的 `NextToken` 原值；不再返回该字段表示遍历结束。
 不要自行构造或修改凭证。
@@ -114,7 +115,7 @@ curl --request POST \
 两套接口读取同一账号的素材记录。REST 的 `group_id` 对应 Action 的 `Id` 或 `GroupId`，
 REST 的 `assetId` 对应 Action 的 `Id`。请以具体字段表为准。
 
-客户 Action 删除成功返回 HTTP 200 和空 `Result`。资源立即不可使用，存储由后台清理。
+素材组或素材的删除 Action 成功返回 HTTP 200 和空 `Result`。资源立即不可使用，存储由后台清理。
 
 已有入口 `POST /doubao/v2/assets` 保留独立约定：仅使用 Bearer，必须显式提供
 `Version=2024-01-01`，删除受理返回 HTTP 202。新的客户端使用本页地址。

@@ -35,7 +35,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 | `model` | string | 是 | 当前 Key 可用的模型名称 |
 | `content` | array | 条件必填 | 文本和媒体内容；与非空 `prompt` 至少提供一种有效输入 |
 | `prompt` | string | 否 | 顶层提示词；`content` 已含文本项时使用内容数组中的文本 |
-| `parameters` | object | 否 | 可包裹本页支持的生成参数；同名字段以包内值为准 |
+| `parameters` | object | 否 | 可包裹本页列出的 `model`、`prompt`、`content` 和生成字段；同名字段以包内值为准，未知字段会被拒绝 |
 | `resolution` | string | 否 | `480p`、`720p`、`1080p`、`4k`，以模型支持范围为准 |
 | `ratio` | string | 否 | `16:9`、`4:3`、`1:1`、`3:4`、`9:16`、`21:9`、`adaptive` |
 | `duration` | integer | 否 | 2.0 系列为 4–15 秒；2.5 为 4–30 秒；`-1` 请求自动时长 |
@@ -59,7 +59,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 建议显式指定时长和分辨率。未提供的可选值由服务决定，不能将预估用量视为输出规格。
 
 2.0 标准版接受至 `4k`，Fast/Mini 接受 `480p` 和 `720p`，2.5 接受至 `1080p`。
-模型名称以账号可用模型为准。
+实际可调用的模型名称及服务能力以账号配置和任务结果为准。
 
 参数包示例中，最终使用 4 秒和 `480p`：
 
@@ -107,13 +107,13 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 }
 ~~~
 
-2.0 系列的参考音频须同时搭配图片或视频；2.5 支持单独提供参考音频。
+按本站参数校验，2.0 系列的参考音频须同时搭配图片或视频；2.5 允许单独提供参考音频。
 2.0 系列最多接受 9 张参考图、3 段参考视频、3 段参考音频；2.5 的结构上限分别为 30、10、10。
 文件规格和内容仍需通过模型审核。
 
 `draft_task` 必须是内容数组中唯一的一项，引用当前用户可访问的任务。
 样片模式要求 `480p`，不能与 `return_last_frame: true` 或 `service_tier: "flex"` 同用。
-2.5 使用首尾帧、`edit` 或 `extend` 时，画面比例应为 `adaptive`；
+2.5 使用首尾帧、`edit` 或 `extend` 时，非空 `ratio` 须为 `adaptive`；
 `edit` 和 `extend` 均须参考视频，`extend` 最多 3 段，`edit` 使用自动时长。
 
 ## 响应
@@ -126,7 +126,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 
 `cgt-` 后的时间为 14 位 UTC 时间，后缀为 5 位小写字母或数字。
 保存实际返回的完整 `id`，通过[查询接口](./query)获取状态和结果。
-成功受理会产生预扣，完成后按实际结算规则调整。
+非免费模型通常在提交时预扣额度，完成后按实际结算规则调整。
 创建超时不等于创建失败，不能直接认定没有扣费或任务不存在。
 
 ## 回调
@@ -137,7 +137,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 回调使用本站任务标识和公开模型名称，`X-Seedance-Event-ID` 可用于识别重复事件。
 接收地址须直接返回 2xx，不依赖重定向。真人认证的同名参数用于浏览器回跳，含义不同。
 
-参数错误通常返回 HTTP 400：
+参数错误通常返回 HTTP 400，例如：
 
 ~~~json
 {"error": {"code": "invalid_request", "message": "Invalid request"}}

@@ -16,7 +16,7 @@ GET /doubao/api/assets/list
 | `asset_type` | string | 不筛选 | `Image`、`Video`、`Audio` |
 | `status` | string | 不筛选 | `Active`、`Processing`、`Failed` |
 | `name` | string | 不筛选 | 名称模糊匹配 |
-| `page` | integer | 1 | 从 1 开始 |
+| `page` | integer | 1 | 1–21474836；非法或越界值按 1 处理 |
 | `page_size` | integer | 20 | 1–100；非法或越界值按 20 处理 |
 
 ~~~bash
@@ -81,12 +81,12 @@ curl "$BASE_URL/doubao/api/assets/asset-20261030120100-abcde" \
 | `assetId` | 素材 ID |
 | `assetName` | 名称 |
 | `assetType` | `Image`、`Video` 或 `Audio` |
-| `status` | `PROCESSING`、`ACTIVE` 或 `FAILED` |
+| `status` | 常见值为 `PROCESSING`、`ACTIVE` 或 `FAILED` |
 | `createdTime`、`updatedTime` | 东八区时间，格式 `yyyy-MM-dd HH:mm:ss` |
 | `errorMessage` | 失败时提供的说明 |
 
-`PROCESSING` 表示尚不能用于生成；`ACTIVE` 表示已可用。HTTP 200 配合 `FAILED`
-表示成功查询到失败素材，不表示素材可用。
+`PROCESSING` 表示处理尚未完成；`ACTIVE` 表示素材状态已就绪，但指定模型仍需满足权限和同步条件。
+HTTP 200 配合 `FAILED` 表示成功查询到失败素材，不表示素材可用。
 
 列表和详情中的素材对象不返回 `groupId`；需要查看所属组时，可查询[素材树](./summary)。
 

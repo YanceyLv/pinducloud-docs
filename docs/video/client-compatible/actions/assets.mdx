@@ -59,14 +59,15 @@ POST /doubao/api/ark/assets?Action=ListAssets
 | `Filter.GroupId` | string | 否 | 单组筛选；不能与非空 `GroupIds` 同用 |
 | `Filter.Name` | string | 否 | 名称模糊匹配，最多 128 字符 |
 | `Filter.AssetType` | string | 否 | `Image`、`Video` 或 `Audio` |
-| `Filter.Statuses` | string[] | 否 | `Processing`、`Active`、`Failed`，多值取并集 |
+| `Filter.Statuses` | string[] | 否 | `Processing`、`Active`、`Failed`、`Deleting`；最多 100 项，多值取并集 |
 | `SortBy` | string | 否 | `CreateTime`、`UpdateTime`、`Name`、`GroupId` |
 | `SortOrder` | string | 否 | `Asc` 或 `Desc`；默认 `Desc` |
 | `MaxResults`、`NextToken` | integer、string | 否 | 翻页凭证方式 |
 | `PageNumber`、`PageSize` | integer | 否 | 页码方式，须成对提供 |
 | `ProjectName` | string | 否 | 缺省或 `default` |
 
-默认按创建时间倒序。不同筛选字段取交集，已删除的素材及其组内资源不可见。
+默认按创建时间倒序。不同筛选字段取交集，删除中或已删除的素材及其组内资源不可见；
+仅筛选 `Deleting` 不会返回这些资源。
 
 请求体：
 

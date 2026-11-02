@@ -10,7 +10,7 @@ title: 查询视频任务
 GET /doubao/api/v3/contents/generations/tasks/{task_id}
 ~~~
 
-使用创建响应中的 `id`。同一用户的有效 Key 可查询该用户的可见任务。
+使用创建响应中的 `id`。任务须属于当前账号，且请求须满足 Key 的访问限制。
 
 ~~~bash
 curl "$BASE_URL/doubao/api/v3/contents/generations/tasks/cgt-20261030040000-abcde" \
@@ -47,9 +47,9 @@ curl "$BASE_URL/doubao/contents/generations/tasks/cgt-20261030040000-abcde" \
 | 字段 | 说明 |
 | --- | --- |
 | `id` | 本站任务 ID |
-| `model` | 调用时使用的公开模型名称 |
+| `model` | 返回的模型名称，可能缺省 |
 | `status` | 任务状态 |
-| `content.video_url` | 成功后的结果地址 |
+| `content.video_url` | 服务返回时的视频结果地址 |
 | `content.last_frame_url` | 请求末帧且服务返回时提供 |
 | `created_at`、`updated_at` | Unix 秒时间戳 |
 | `usage` | 服务实际返回的用量 |
@@ -64,7 +64,7 @@ curl "$BASE_URL/doubao/contents/generations/tasks/cgt-20261030040000-abcde" \
 
 时长、分辨率、服务等级、样片标记等可选字段以实际响应为准，
 未返回的字段不会补默认值；客户端应允许字段缺省。实际响应也可能包含其他字段。
-媒体地址可能失效，应及时下载或保存。
+成功状态不保证一定包含视频地址。地址可能失效，应及时下载或保存。
 
 | 状态 | 含义 |
 | --- | --- |
@@ -99,6 +99,7 @@ GET /doubao/api/v3/contents/generations/tasks
 | `filter.task_ids` | string | 不筛选 | 可重复，最多 100 个 ID，每个最多 191 字符 |
 
 列表范围为当前用户最近七天的可见任务。未知查询参数和不允许的重复参数会被拒绝。
+缺省的 `filter.service_tier=default` 只匹配默认服务等级；查询 `flex` 任务须显式指定。
 
 ~~~bash
 curl --get "$BASE_URL/doubao/api/v3/contents/generations/tasks" \

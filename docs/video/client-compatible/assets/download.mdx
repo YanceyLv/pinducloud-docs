@@ -36,14 +36,14 @@ curl "$BASE_URL/doubao/api/assets/asset-20261030120100-abcde/public-url" \
 {
   "success": true,
   "data": {
-    "url": "https://video.example.com/doubao/api/a/asset-20261030120100-abcde?e=1793340060&s=0123456789abcdef0123456789abcdef",
+    "url": "https://video.pinducloud.com.cn/doubao/api/a/{asset_id}?e={expires_at}&s={signature}",
     "expires_in": 7200
   }
 }
 ~~~
 
-`url` 可直接交给需要读取素材的服务。`expires_in` 为有效期秒数，固定为 7200。
-请使用实际返回的完整 URL，不自行生成或修改签名参数。
+上例中的花括号表示占位，实际返回的 `url` 可直接交给需要读取素材的服务。
+`expires_in` 为有效期秒数，固定为 7200。请使用实际返回的完整 URL，不自行生成或修改签名参数。
 
 ## 公开下载
 

@@ -44,10 +44,16 @@ curl --request POST "$BASE_URL/doubao/api/assets/liveness/session" \
 | `byted_token` | 本次认证凭证，用于 Action 结果查询 |
 | `h5_link` | 本人认证页面；应完整打开，不删改查询参数 |
 | `history_id` | 本站认证记录编号 |
-| `suggest_model` | 请求中指定的模型，或未指定时自动选择的模型 |
+| `suggest_model` | 请求中指定的模型；未指定时返回所选渠道的匹配模型，未匹配时可能为空 |
 | `liveness_group` | 固定为 `real` |
 
 认证链接有时效；失效后需重新创建会话。不要复用已消费的认证链接或公开认证凭证。
+
+模型不在 Key 的可用范围内或没有可用渠道时，可能返回 HTTP 403：
+
+~~~json
+{"success": false, "error": "model_no_permission", "message": "no available channel for this model"}
+~~~
 
 ## 查询认证历史
 
@@ -59,8 +65,8 @@ GET /doubao/api/assets/liveness/history
 | --- | --- | --- | --- |
 | `group_id` | string | 不筛选 | 按认证组 ID 筛选 |
 | `status` | string | 不筛选 | `pending`、`success`、`failed` |
-| `page` | integer | 1 | 从 1 开始 |
-| `page_size` | integer | 20 | 1–100 |
+| `page` | integer | 1 | 1–21474836；非法或越界值按 1 处理 |
+| `page_size` | integer | 20 | 1–100；非法或越界值按 20 处理 |
 
 ~~~bash
 curl --get "$BASE_URL/doubao/api/assets/liveness/history" \
@@ -108,7 +114,7 @@ GET /doubao/api/assets/liveness/callback
 | `bytedToken` | 认证凭证；提供时必须与会话匹配 |
 | `resultCode` | 认证结果码，成功值为 `10000` |
 | `algorithmBaseRespCode` | 认证服务子结果码 |
-| `reqMeasureInfoValue` | 本次认证是否计费的标记 |
+| `reqMeasureInfoValue` | 认证结果附带的值，具体含义以认证服务返回为准 |
 | `verify_type` | 认证类型 |
 
 本站会核验认证结果，再显示结果页或跳转至自定义 `callback_url`。
