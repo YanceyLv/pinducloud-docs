@@ -38,7 +38,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 | --- | --- | --- | --- | --- |
 | model | string | 是 | 已开放的 Seedance 模型 ID | 选择模型和对应计费规则 |
 | content | array | 是 | 文本、图片、视频、音频或 Draft 项 | 描述生成内容及参考素材 |
-| resolution | string | 否 | 2.0 标准版：`480p`、`720p`、`1080p`、`4k`；Fast/Mini：`480p`、`720p`；2.5：`480p`、`720p`、`1080p` | 未传时 Fast/Mini 按 `720p` 预估，标准版和 2.5 按 `1080p` 预估；不保证实际输出采用预估分辨率 |
+| resolution | string | 否 | 2.0、2.5 标准版：`480p`、`720p`、`1080p`、`4k`；2.0 Fast/Mini 和 2.5 Flash：`480p`、`720p` | 建议显式指定；具体可用值以模型服务为准，预估分辨率不保证等于实际输出 |
 | ratio | string | 否 | 16:9、4:3、1:1、3:4、9:16、21:9、adaptive | 输出画面比例 |
 | duration | integer | 否 | 三个 2.0 模型为 `-1` 或 4~15；2.5 入口接受 `-1` 或 4~30 | 单位为秒；`-1` 请求智能时长，实际结果由模型返回 |
 | frames | integer | 否 | 三个 2.0 模型的本站入口不接受 | 这是本站入口限制，不代表其他 Seedance 版本都不支持 |
@@ -47,7 +47,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 | service_tier | string | 否 | 三个 2.0 模型的本站入口不接受 | `default`/`flex` 仅用于列表过滤，其他模型以对应接口为准 |
 | execution_expires_after | integer | 否 | 3600~259200 | 从创建时间起的过期秒数，默认 172800 |
 | generate_audio | boolean | 否 | true / false | `false` 用于请求无声视频；实际音频以生成结果为准 |
-| draft | boolean | 否 | 三个 2.0 模型的本站入口不接受 `true` | Draft 流程只适用于相应的其他模型 |
+| draft | boolean | 否 | 2.0 系列和 2.5 Flash 的本站入口不接受 `true` | Draft 流程需模型和模型服务支持 |
 | tools | array | 否 | 当前入口接受 `[{"type":"web_search"}]` | 是否实际执行以任务结果为准 |
 | safety_identifier | string | 否 | ASCII 字符串，最长 64 字符 | 终端用户稳定标识 |
 | priority | integer | 否 | 0~9 | 系统校验范围并传递；实际调度效果以任务结果为准 |
@@ -82,8 +82,8 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 | --- | --- | --- | --- |
 | text | text | 无 | 视频提示词 |
 | image_url | image_url.url | `first_frame`、`last_frame` 或 `reference_image` | 单张图片可省略 role，默认作为首帧；多张图片必须写 role |
-| video_url | video_url.url | `reference_video` | 参考视频，2.0 系列支持 |
-| audio_url | audio_url.url | `reference_audio` | 参考音频，2.0 系列支持 |
+| video_url | video_url.url | `reference_video` | 参考视频，以模型服务能力为准 |
+| audio_url | audio_url.url | `reference_audio` | 参考音频，以模型服务能力为准 |
 | draft_task | draft_task.id | 无 | 使用已有 Draft 任务生成正式视频 |
 
 媒体 URL 可以是公网地址、符合接口要求的 Base64 data URI，或已登记的素材引用。
@@ -130,6 +130,8 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 以下媒体规格用于 2.0 系列接入参考。本站会检查内容结构、角色、数量和参数类型；
 外部文件的编码、尺寸、帧率及内容审核由模型服务继续检查，通过请求校验不等于生成成功。
 2.5 的输入规格与能力不能直接由此推断，未确认的组合以模型处理结果为准。
+2.5 可单独提供参考音频；为兼容不同模型服务，标准版的参考图、参考视频、参考音频
+建议分别不超过 30 张、10 段、10 段，Flash 分别不超过 10 张、5 段、5 段。
 
 ### 图片
 
@@ -225,7 +227,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 
 ### Draft 转正式视频
 
-1. 先使用 `draft: true` 创建支持 Draft 的模型样片任务；当前三个 2.0 模型不接受 `draft: true`，但允许传 `draft: false`。
+1. 先使用 `draft: true` 创建支持 Draft 的模型样片任务；2.0 系列和 2.5 Flash 不接受 `draft: true`，但允许传 `draft: false`。
 2. 查询样片并确认结果。
 3. 将样片任务 ID 放入新的 `draft_task.id`，创建正式任务。
 
@@ -246,7 +248,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 ~~~
 
 提交时使用公开任务 ID，系统会校验任务归属并处理 Draft 关联。该流程不能用于
-当前三个 Seedance 2.0 模型。
+Seedance 2.0 系列和 2.5 Flash。
 
 ## 成功响应
 

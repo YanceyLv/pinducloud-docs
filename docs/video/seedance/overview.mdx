@@ -7,7 +7,7 @@ title: 豆包 Seedance 视频生成
 
 这组接口通过 Seedance 模型提交文生视频、图生视频和多模态参考视频任务。
 请求体使用 Ark/Seedance 的 `content` 结构，任务结果通过异步查询接口取得。
-本页说明 Seedance 2.0 标准版、Fast、Mini 和 2.5 的接口规则。不同版本有各自的
+本页说明 Seedance 2.0 标准版、Fast、Mini 和 2.5 标准版、Flash 的接口规则。不同版本有各自的
 参数限制，不能套用同一套规则。模型是否可调用，以当前 API Key 的模型列表为准。
 
 ## 服务地址
@@ -47,10 +47,10 @@ JSON 请求还需设置 `Content-Type: application/json`。
 | --- | --- | --- |
 | 文生视频 | 文本项 | 已开放的对应模型 |
 | 首帧图生视频 | 文本项 + 一张首帧图 | 由对应模型的输入能力决定 |
-| 首尾帧图生视频 | 文本项 + `first_frame` 和 `last_frame` | 2.0 标准版、Fast、Mini 的接口均接受；生成以模型处理结果为准 |
-| 多模态参考生成 | 文本项 + 参考图/视频/音频 | 当前 2.0 三个模型的 `content` 入口 |
-| 有声视频 | `generate_audio: true` | 当前 2.0 三个模型 |
-| Draft 样片 | `draft: true` | 当前文档保留 1.5 pro 流程；2.0 入口拒绝 |
+| 首尾帧图生视频 | 文本项 + `first_frame` 和 `last_frame` | 2.0、2.5 系列；生成以模型处理结果为准 |
+| 多模态参考生成 | 文本项 + 参考图/视频/音频 | 2.0、2.5 系列；具体组合以模型服务能力为准 |
+| 有声视频 | `generate_audio: true` | 2.0、2.5 系列；实际音频以生成结果为准 |
+| Draft 样片 | `draft: true` | 支持该能力的模型可用；2.0 系列和 2.5 Flash 不接受 |
 
 首帧/首尾帧和多模态参考是互斥的输入场景。不要在同一个请求中同时混用
 first_frame、last_frame 与 reference_* 角色。
@@ -69,22 +69,23 @@ doubao-seedance-2-0
 doubao-seedance-2-0-fast
 doubao-seedance-2-0-mini
 doubao-seedance-2-5
+doubao-seedance-2-5-flash
 ~~~
 
-各模型的输出分辨率限制如下：
+本站入口对各模型的输出分辨率校验如下，实际能力以模型服务和账号配置为准：
 
 | 模型 | 可用分辨率 |
 | --- | --- |
 | doubao-seedance-2-0-fast | 480p、720p |
 | doubao-seedance-2-0-mini | 480p、720p |
 | doubao-seedance-2-0 | 480p、720p、1080p、4k |
-| doubao-seedance-2-5 | 480p、720p、1080p；不支持 4k |
+| doubao-seedance-2-5 | 480p、720p、1080p、4k |
+| doubao-seedance-2-5-flash | 480p、720p |
 | 上述 1.0 和 1.5 模型 | 480p、720p、1080p |
 
-Fast 和 Mini 模型不能传 `1080p`、`4k` 或等价的高分辨率尺寸。未传 `resolution`
-时，Fast/Mini 按 `720p` 进行预估，标准版按 `1080p` 进行预估；实际结果以查询
-响应的 `resolution` 字段为准。2.5 默认按 `1080p` 预估，不能通过 `4K`、
-`3840x2160` 等写法请求 4K；兼容接口的 `size` 也遵守同一限制。
+2.0 Fast、Mini 和 2.5 Flash 不能传 `1080p`、`4k` 或等价的高分辨率尺寸。
+建议显式指定 `resolution`；未指定时的预估和实际输出可能不同，实际结果以任务查询
+响应为准。兼容接口的 `size` 同样受模型分辨率限制。
 
 ## 三个 2.0 模型的字段边界
 

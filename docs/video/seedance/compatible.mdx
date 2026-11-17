@@ -47,7 +47,8 @@ curl --request POST "$BASE_URL/v1/videos" \
 | `generate_audio`、`return_last_frame` 等 | 对应生成选项 | 按[创建任务](./create)的类型及模型限制使用 |
 
 建议只选一种分辨率字段，不要同时传含义不同的 `size` 和 `resolution`。
-Fast/Mini 只接受 480p、720p，2.5 不接受 4K，也不能通过像素尺寸绕过限制。
+2.0 Fast/Mini 和 2.5 Flash 只接受 `480p`、`720p`；2.0 和 2.5 标准版可请求 `4k`。
+实际可用分辨率以模型服务和账号配置为准。
 `seconds: -1` 为智能时长，不表示免费或负用量。
 
 该入口接受 JSON 和纯字段 multipart；Seedance 不接受 multipart 文件附件。
