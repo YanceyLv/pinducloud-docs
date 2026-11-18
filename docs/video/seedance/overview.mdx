@@ -79,34 +79,6 @@ first_frame、last_frame 与 reference_* 角色。
 建议显式指定 `resolution`；未指定时的预估和实际输出可能不同，实际结果以任务查询
 响应为准。兼容接口的 `size` 同样受模型分辨率限制。
 
-## 三个 2.0 模型的字段边界
-
-下表说明本站 `/doubao/api/v3/contents/generations/tasks` 入口的行为，并单独标出
-已知的模型限制。“本站当前拒绝”表示本站会在提交前返回 400；没有标注为模型限制
-的项目，不应推断其他 Seedance 版本也有相同限制。
-
-| 字段或能力 | 标准版 `doubao-seedance-2-0` | Fast / Mini | 本站行为 |
-| --- | --- | --- | --- |
-| `resolution` | `480p`、`720p`、`1080p`、`4k` | `480p`、`720p` | Fast/Mini 的高分辨率请求返回 400 |
-| `duration` | `-1` 或 4~15 的整数 | `-1` 或 4~15 的整数 | 其他值返回 400 |
-| `content` 参考媒体 | 参考图、参考视频、参考音频 | 同左 | 媒体角色和数量必须符合请求规则 |
-| `frames` | 本站当前拒绝 | 本站当前拒绝 | 不代表其他 Seedance 版本都不支持 |
-| `service_tier` | 本站当前拒绝 | 本站当前拒绝 | 列表过滤参数仍可使用 `default`/`flex` |
-| `draft: true`、`draft_task` | 本站当前拒绝 | 本站当前拒绝 | `draft: false` 可传，2.0 不使用 Draft 流程 |
-| `camera_fixed` | 本站拒绝；标准版不支持 | 本站拒绝 | 返回 400 |
-| `output_format` | 本站只接受 `mp4`；标准版不支持 `mov` | 本站只接受 `mp4` | 返回 400 |
-| `generate_audio` | 支持 | 支持 | 显式 `false` 用于请求无声视频 |
-| `return_last_frame` | 支持 | 支持 | 结果可能包含 `last_frame_url` |
-| `seed`、`priority` | 按字段范围传递 | 按字段范围传递 | 查询结果以实际返回值为准 |
-| `tools` | 可传 `web_search` 工具 | 可传 | 是否实际执行以任务结果为准 |
-
-`frames`、`service_tier`、`draft: true` 和 `draft_task` 是本站当前 2.0 入口的限制，
-不要根据查询结果中出现的同名字段反推创建接口可以接受它们。`service_tier` 出现
-在列表过滤中，只表示可以筛选已保存任务的字段。
-
-`seed` 是请求值和实际使用值的两个概念。本站会保留并发送调用方提供的值，查询
-结果中的 `seed` 是任务返回值；如果模型自行调整，本站不会改写回显结果。
-
 ## 结果与保留时间
 
 创建成功后返回一个公开任务 ID，查询成功时视频地址在
