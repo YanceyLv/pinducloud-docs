@@ -57,31 +57,23 @@ first_frame、last_frame 与 reference_* 角色。
 
 ## 模型与分辨率
 
-以下为模型名称示例；实际可调用名称以当前 API Key 可用模型列表为准。可通过
-`GET /v1/models` 查询可用列表。
+以下列出模型名称及常用别名。调用时 `model` 填写其中一个名称；是否可用及对应
+价格以当前 API Key 的模型列表和本站定价为准，可通过 `GET /v1/models` 查询。
+带日期的模型名与别名的开放和映射可能分别配置，列出不代表两者均已开通。
 
-~~~text
-doubao-seedance-1-0-pro
-doubao-seedance-1-0-lite-t2v
-doubao-seedance-1-0-lite-i2v
-doubao-seedance-1-5-pro
-doubao-seedance-2-0
-doubao-seedance-2-0-fast
-doubao-seedance-2-0-mini
-doubao-seedance-2-5
-doubao-seedance-2-5-flash
-~~~
+| 带日期的模型名 | 不带日期的别名或模型名 | 本站入口的分辨率校验 |
+| --- | --- | --- |
+| `doubao-seedance-1-0-pro-250528` | `doubao-seedance-1-0-pro` | 480p、720p、1080p |
+| — | `doubao-seedance-1-0-lite-t2v` | 480p、720p、1080p |
+| — | `doubao-seedance-1-0-lite-i2v` | 480p、720p、1080p |
+| `doubao-seedance-1-5-pro-251215` | `doubao-seedance-1-5-pro` | 480p、720p、1080p |
+| `doubao-seedance-2-0-260128` | `doubao-seedance-2-0` | 480p、720p、1080p、4k |
+| `doubao-seedance-2-0-fast-260128` | `doubao-seedance-2-0-fast` | 480p、720p |
+| `doubao-seedance-2-0-mini-260615` | `doubao-seedance-2-0-mini` | 480p、720p |
+| `doubao-seedance-2-5-260628` | `doubao-seedance-2-5` | 480p、720p、1080p、4k |
+| `doubao-seedance-2-5-flash-261115` | `doubao-seedance-2-5-flash` | 480p、720p |
 
-本站入口对各模型的输出分辨率校验如下，实际能力以模型服务和账号配置为准：
-
-| 模型 | 可用分辨率 |
-| --- | --- |
-| doubao-seedance-2-0-fast | 480p、720p |
-| doubao-seedance-2-0-mini | 480p、720p |
-| doubao-seedance-2-0 | 480p、720p、1080p、4k |
-| doubao-seedance-2-5 | 480p、720p、1080p、4k |
-| doubao-seedance-2-5-flash | 480p、720p |
-| 上述 1.0 和 1.5 模型 | 480p、720p、1080p |
+表中“—”表示未列出带日期的名称。实际分辨率能力以模型服务和账号配置为准。
 
 2.0 Fast、Mini 和 2.5 Flash 不能传 `1080p`、`4k` 或等价的高分辨率尺寸。
 建议显式指定 `resolution`；未指定时的预估和实际输出可能不同，实际结果以任务查询

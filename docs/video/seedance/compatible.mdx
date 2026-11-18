@@ -29,7 +29,7 @@ curl --request POST "$BASE_URL/v1/videos" \
   --header "Authorization: Bearer $API_KEY" \
   --header "Content-Type: application/json" \
   --data '{
-    "model": "doubao-seedance-2-0-fast",
+    "model": "doubao-seedance-2-0-fast-260128",
     "prompt": "一只纸飞机飞过晴朗天空",
     "seconds": 4,
     "size": "480p",
@@ -70,7 +70,7 @@ curl "$BASE_URL/v1/videos/task_gateway_doubao_01" \
 {
   "id": "task_gateway_doubao_01",
   "object": "video",
-  "model": "doubao-seedance-2-0-fast",
+  "model": "doubao-seedance-2-0-fast-260128",
   "status": "completed",
   "progress": 100,
   "created_at": 1790668800,
@@ -119,6 +119,9 @@ curl "$BASE_URL/v1/responses/resp_example" \
 `task_...`。该入口也支持同步等待和 `stream: true` 的 SSE 响应，流式输出是
 任务事件和最终结果，不是逐帧视频数据。成功结果通过 Responses 的 `output`
 消息返回，其中包含视频展示链接；不要按原生 `content.video_url` 解析。
+
+示例分别使用带日期的模型名和别名；实际调用请使用当前 Key 可用的名称，
+模型名称对照见[模型与分辨率](./overview#模型与分辨率)。
 
 对于素材引用，可以使用顶层 `content` 数组传入与原生接口相同的媒体对象。
 `resolution`、`duration` / `seconds`、`ratio` 等参数仍受相同模型限制；

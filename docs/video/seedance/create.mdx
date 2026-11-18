@@ -8,6 +8,9 @@ title: 创建 Seedance 视频生成任务
 创建接口是异步接口。请求被接受后先返回任务 ID，视频生成完成后再通过查询
 接口取得下载地址。
 
+下方示例使用带日期的模型名或别名，调用时请填写当前 Key 可用的名称；对应关系见
+[模型与分辨率](./overview#模型与分辨率)。
+
 ## 请求
 
 ~~~http
@@ -19,7 +22,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
   --header "Authorization: Bearer $API_KEY" \
   --header "Content-Type: application/json" \
   --data '{
-    "model": "doubao-seedance-2-0",
+    "model": "doubao-seedance-2-0-260128",
     "content": [
       {"type": "text", "text": "一只纸飞机穿过城市上空，镜头跟随它飞过屋顶"}
     ],

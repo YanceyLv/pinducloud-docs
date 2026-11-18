@@ -18,7 +18,7 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
   --header "Authorization: Bearer $API_KEY" \
   --header "Content-Type: application/json" \
   --data '{
-    "model": "doubao-seedance-2-0",
+    "model": "doubao-seedance-2-0-260128",
     "prompt": "清晨的湖面泛起轻微涟漪，镜头缓慢前移",
     "duration": 4,
     "resolution": "480p",
@@ -57,6 +57,8 @@ curl --request POST "$BASE_URL/doubao/api/v3/contents/generations/tasks" \
 | `moderation_options` | object | 否 | 审核选项；具体字段由生成服务校验 |
 
 建议显式指定时长和分辨率。未提供的可选值由服务决定，不能将预估用量视为输出规格。
+示例使用带日期的模型名或别名，实际调用请使用当前 Key 可用的名称；完整对照见
+[模型与分辨率](../../seedance/overview#模型与分辨率)。
 
 2.0 和 2.5 标准版可请求至 `4k`；2.0 Fast/Mini 和 2.5 Flash 接受 `480p`、`720p`。
 实际可调用的模型名称及服务能力以账号配置和任务结果为准。
